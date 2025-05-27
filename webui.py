@@ -236,22 +236,21 @@ def start_api_server(host=DEFAULT_HOST, port=API_PORT):
             
             ticker_list = data.get('tickers', '').split(',')
             selected_analysts = data.get('selectedAnalysts', [])
-            model_name = data.get('modelName')
+            # model_name = data.get('modelName')
             
             print(f"Processing analysis for tickers: {ticker_list}")
             print(f"Selected analysts: {selected_analysts}")
-            print(f"Using model: {model_name}")
+            # print(f"Using model: {model_name}")
             
             # Try to run the web-specific analysis function
             try:
                 result = run_hedge_fund_for_web(
                     tickers=ticker_list,
                     selected_analysts=selected_analysts,
-                    model_name=model_name,
+                    # model_name=model_name,
                     start_date=data.get('startDate') or None,
                     end_date=data.get('endDate') or None,
                     initial_cash=data.get('initialCash', 100000),
-                    is_crypto=data.get('isCrypto', False)
                 )
                 
                 print("Analysis completed successfully")
@@ -736,7 +735,7 @@ a {
     print(f"Web UI template set up in {WEBUI_DIR}")
     print("Run with --dev to start the development server")
 
-def run_hedge_fund_for_web(tickers, selected_analysts, model_name, start_date=None, end_date=None, initial_cash=100000, is_crypto=False):
+def run_hedge_fund_for_web(tickers, selected_analysts, start_date=None, end_date=None, initial_cash=100000):
     """
     Special version of run_hedge_fund optimized for web UI integration.
     This bypasses some of the CLI-specific code and analyst selection logic.
@@ -768,7 +767,7 @@ def run_hedge_fund_for_web(tickers, selected_analysts, model_name, start_date=No
     # model_info = get_model_info(model_name)
     model_provider = "OpenAI" # model_info.provider.value if model_info else "Unknown"
     # model_name 来自函数参数，这里主要用于日志记录 (model_name comes from function parameter, mainly for logging here)
-    broadcast_log(f"Using model: {model_name} ({model_provider})", "info") 
+    # broadcast_log(f"Using model: {model_name} ({model_provider})", "info") 
     
     # Create portfolio
     portfolio = {

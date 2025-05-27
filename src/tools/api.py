@@ -430,7 +430,6 @@ def get_financial_metrics(
         if financial_metrics:
             _cache.set_financial_metrics(ticker, [m.model_dump() for m in financial_metrics])
         
-        print(financial_metrics)
             
         return financial_metrics
         

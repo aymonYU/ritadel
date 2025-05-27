@@ -70,8 +70,6 @@ def ben_graham_agent(state: AgentState):
         graham_output = generate_graham_output(
             ticker=ticker,
             analysis_data=analysis_data,
-            model_name=state["metadata"]["model_name"],
-            model_provider=state["metadata"]["model_provider"],
         )
 
         graham_analysis[ticker] = {"signal": graham_output.signal, "confidence": graham_output.confidence, "reasoning": graham_output.reasoning}
@@ -316,8 +314,6 @@ def analyze_valuation_graham(metrics: list, financial_line_items: list, market_c
 def generate_graham_output(
     ticker: str,
     analysis_data: dict[str, any],
-    # model_name: str, # 已移除 (Removed)
-    # model_provider: str, # 已移除 (Removed)
 ) -> BenGrahamSignal:
     """
     Generates an investment decision in the style of Benjamin Graham:
@@ -378,8 +374,6 @@ def generate_graham_output(
     # model_name and model_provider are no longer passed when calling call_llm
     return call_llm(
         prompt=prompt,
-        # model_name=model_name, # 已移除 (Removed)
-        # model_provider=model_provider, # 已移除 (Removed)
         pydantic_model=BenGrahamSignal,
         agent_name="ben_graham_agent",
         default_factory=create_default_ben_graham_signal,

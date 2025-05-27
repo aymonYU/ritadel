@@ -57,25 +57,17 @@ LLM_ORDER = [("[openai] gpt-4o", "gpt-4o", "OpenAI")] # 直接硬编码 (Directl
 
 # 修改 get_model 函数，使其只支持 OpenAI GPT-4o
 # Modify the get_model function to only support OpenAI GPT-4o
-def get_model(model_name: str = "gpt-4o") -> ChatOpenAI | None: # model_provider 参数已移除，model_name 默认为 "gpt-4o" (model_provider parameter removed, model_name defaults to "gpt-4o")
+def get_model() -> ChatOpenAI | None: # model_provider 参数已移除，model_name 默认为 "gpt-4o" (model_provider parameter removed, model_name defaults to "gpt-4o")
     # 移除了 Groq, Anthropic, 和 Gemini 的逻辑，因为不再支持这些模型提供商
     # Removed logic for Groq, Anthropic, and Gemini as they are no longer supported
 
-    # 只保留 OpenAI 的逻辑
-    # Only keep OpenAI logic
-    # 获取并验证 API 密钥
-    # Get and validate API key
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        # 打印错误到控制台
-        # Print error to console
-        print(f"API Key Error: Please make sure OPENAI_API_KEY is set in your .env file.") # API 密钥错误：请确保 OPENAI_API_KEY 已在您的 .env 文件中设置。 (API key error: Please ensure OPENAI_API_KEY is set in your .env file.)
-        raise ValueError("OpenAI API key not found.  Please make sure OPENAI_API_KEY is set in your .env file.") # 未找到 OpenAI API 密钥。请确保 OPENAI_API_KEY 已在您的 .env 文件中设置。 (OpenAI API key not found. Please ensure OPENAI_API_KEY is set in your .env file.)
-    # 确保我们总是使用 "gpt-4o" 模型，忽略传入的 model_name 参数，或者验证它是否为 "gpt-4o"
-    # Ensure we always use the "gpt-4o" model, ignoring the passed model_name, or validate it is "gpt-4o"
-    # 为了简单起见，我们这里直接使用 "gpt-4o"，并使函数签名中的 model_name 参数的意义更偏向于一个固定值。
-    # For simplicity, we directly use "gpt-4o" here, and the model_name parameter in the function signature becomes more of a fixed value.
-    return ChatOpenAI(model="gpt-4o", api_key=api_key)
+    model = ChatOpenAI(
+        model=os.getenv("AI_MODEL"),
+        api_key=os.getenv("OPENAI_API_KEY"),               
+        base_url=os.getenv("BASE_URL")
+    )
+
+    return model
 
 # 确保文件末尾有一个换行符
 # Ensure there is a newline at the end of the file

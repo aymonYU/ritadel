@@ -4,7 +4,7 @@ from colorama import Fore, Style
 from round_table.engine import simulate_round_table
 from round_table.display import print_readable_conversation, get_signal_color
 
-def run_round_table(data, model_name, model_provider, show_reasoning=True):
+def run_round_table(data, show_reasoning=True):
     """
     Simulates a round table discussion among investment analysts based on their signals.
     
@@ -13,8 +13,6 @@ def run_round_table(data, model_name, model_provider, show_reasoning=True):
     
     Args:
         data: Dictionary containing analyst signals and ticker information
-        model_name: Name of the LLM model to use
-        model_provider: Provider of the LLM model
         show_reasoning: Whether to print the detailed conversation
         
     Returns:
@@ -63,8 +61,6 @@ def run_round_table(data, model_name, model_provider, show_reasoning=True):
         round_table_output = simulate_round_table(
             ticker=ticker,
             ticker_signals=ticker_signals,
-            # model_name=model_name, # 已移除 (Removed)
-            # model_provider=model_provider, # 已移除 (Removed)
         )
         
         # Store analysis

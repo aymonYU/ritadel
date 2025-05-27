@@ -7,8 +7,7 @@ from utils.progress import progress
 
 T = TypeVar('T', bound=BaseModel)
 
-# 移除了 model_name 和 model_provider 参数，因为模型固定为 GPT-4o
-# Removed model_name and model_provider parameters as the model is fixed to GPT-4o
+
 def call_llm(
     prompt: Any,
     pydantic_model: Type[T],
@@ -22,8 +21,6 @@ def call_llm(
     
     Args:
         prompt: The prompt to send to the LLM (要发送给 LLM 的提示)
-        # model_name: Name of the model to use (不再需要)
-        # model_provider: Provider of the model (不再需要)
         pydantic_model: The Pydantic model class to structure the output (用于结构化输出的 Pydantic 模型类)
         agent_name: Optional name of the agent for progress updates (用于进度更新的可选代理名称)
         max_retries: Maximum number of retries (default: 3) (最大重试次数，默认为 3)
@@ -47,31 +44,38 @@ def call_llm(
         method="json_mode",
     )
     
-    # Call the LLM with retries (带重试逻辑调用 LLM)
+    # Retry logic for making the LLM call
     for attempt in range(max_retries):
         try:
-            # Call the LLM (调用 LLM)
-            result = llm.invoke(prompt)
+            if agent_name:
+                progress.update_status(agent_name, None, f"Calling LLM (attempt {attempt + 1}/{max_retries})")
             
-            # 移除了 Deepseek 特定的 JSON 解析逻辑，因为不再支持 Deepseek 模型
-            # Removed Deepseek-specific JSON parsing logic as Deepseek models are no longer supported
-            # if model_info and model_info.is_deepseek():
-            #     parsed_result = extract_json_from_deepseek_response(result.content)
-            #     if parsed_result:
-            #         return pydantic_model(**parsed_result)
-            # else:
-            return result # 直接返回结构化输出结果 (Directly return the structured output result)
-                
+            # Make the actual LLM call
+            response = llm.invoke(prompt)
+            
+            if agent_name:
+                progress.update_status(agent_name, None, "LLM call completed")
+            
+            return response
+            
         except Exception as e:
             if agent_name:
-                progress.update_status(agent_name, None, f"Error - retry {attempt + 1}/{max_retries}")
+                progress.update_status(agent_name, None, f"LLM call failed (attempt {attempt + 1}/{max_retries}): {str(e)}")
             
-            if attempt == max_retries - 1:
-                print(f"Error in LLM call after {max_retries} attempts: {e}")
-                # Use default_factory if provided, otherwise create a basic default
+            if attempt == max_retries - 1:  # Last attempt
+                # If a default factory is provided, use it
                 if default_factory:
-                    return default_factory()
+                    try:
+                        return default_factory()
+                    except Exception:
+                        pass
+                
+                # Fall back to the generic default response
                 return create_default_response(pydantic_model)
+            
+            # Wait a bit before retrying (exponential backoff)
+            import time
+            time.sleep(2 ** attempt)
 
     # This should never be reached due to the retry logic above
     return create_default_response(pydantic_model)
