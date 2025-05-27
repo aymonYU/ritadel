@@ -10,7 +10,7 @@ from utils.progress import progress
 
 
 class WarrenBuffettSignal(BaseModel):
-    signal: Literal["bullish", "bearish", "neutral"]
+    signal: Literal["买入", "卖出", "中性"]
     confidence: float
     reasoning: str
 
@@ -77,11 +77,11 @@ def warren_buffett_agent(state: AgentState):
 
         # Generate trading signal
         if total_score >= 0.7 * max_possible_score:
-            signal = "bullish"
+            signal = "买入"
         elif total_score <= 0.3 * max_possible_score:
-            signal = "bearish"
+            signal = "卖出"
         else:
-            signal = "neutral"
+            signal = "中性"
 
         # Combine all analysis results
         analysis_data[ticker] = {
@@ -297,34 +297,38 @@ def generate_buffett_output(
         [
             (
                 "system",
-                """You are a Warren Buffett AI agent. Decide on investment signals based on Warren Buffett’s principles:
+                """你是沃伦·巴菲特的人工智能代理。根据沃伦·巴菲特的原则确定投资信号：
+                - 能力圈：只投资你了解的企业
+                - 安全边际 (> 30%)：以低于内在价值的大幅折价买入
+                - 经济护城河：寻找持久的竞争优势
+                - 优质管理：寻求保守、以股东为导向的团队
+                - 财务实力：青睐低负债、高股本回报率的企业
+                - 长期视野：投资企业，而不仅仅是股票
+                - 仅在基本面恶化或估值远超内在价值时出售
 
-                Circle of Competence: Only invest in businesses you understand
-                Margin of Safety: Buy well below intrinsic value
-                Economic Moat: Prefer companies with lasting advantages
-                Quality Management: Look for conservative, shareholder-oriented teams
-                Financial Strength: Low debt, strong returns on equity
-                Long-term Perspective: Invest in businesses, not just stocks
+                在提供理由时，请做到详尽具体，具体如下：
+                1. 解释对你决策影响最大的关键因素（正面和负面）
+                2. 强调公司如何符合或违反特定的巴菲特原则
+                3. 在相关之处提供量化证据（例如，具体的利润率、净资产收益率、债务水平）
+                4. 最后以巴菲特式的评估方式对投资机会进行总结
+                5. 在解释中运用沃伦·巴菲特的语气和对话风格
 
-                Rules:
-                - Buy only if margin of safety > 30%
-                - Focus on owner earnings and intrinsic value
-                - Prefer consistent earnings growth
-                - Avoid high debt or poor management
-                - Hold good businesses long term
-                - Sell when fundamentals deteriorate or the valuation is too high
+                例如，如果看涨：“我对[特定优势]印象特别深刻，这让我们想起了我们早期对喜诗糖果的投资，当时我们看到了[类似的属性]……”
+                例如，如果看跌：“资本回报率的下降让我想起了伯克希尔哈撒韦的纺织业务，我们最终退出了，因为……”
+
+                请严格遵循这些准则。
                 """,
             ),
             (
                 "human",
-                """Based on the following data, create the investment signal as Warren Buffett would.
+                """根据以下数据，像沃伦·巴菲特那样创建投资信号。
 
-                Analysis Data for {ticker}:
+                股票{ticker} 的分析数据：
                 {analysis_data}
 
-                Return the trading signal in the following JSON format:
+                以以下 JSON 格式返回交易信号：
                 {{
-                  "signal": "bullish/bearish/neutral",
+                  "signal": "买入/中性/卖出",
                   "confidence": float (0-100),
                   "reasoning": "string"
                 }}

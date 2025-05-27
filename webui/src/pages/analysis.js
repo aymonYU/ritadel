@@ -164,7 +164,7 @@ export default function Analysis() {
       setProgress(initialProgress);
       
       // Make API request with fetch directly instead of axios for debugging
-      fetch('http://localhost:5000/api/analysis', {
+      fetch('http://127.0.0.1:5000/api/analysis', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

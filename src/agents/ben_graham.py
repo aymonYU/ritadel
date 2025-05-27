@@ -12,7 +12,7 @@ import math
 
 
 class BenGrahamSignal(BaseModel):
-    signal: Literal["bullish", "bearish", "neutral"]
+    signal: Literal["买入", "卖出", "中性"]
     confidence: float
     reasoning: str
 
@@ -58,11 +58,11 @@ def ben_graham_agent(state: AgentState):
 
         # Map total_score to signal
         if total_score >= 0.7 * max_possible_score:
-            signal = "bullish"
+            signal = "买入"
         elif total_score <= 0.3 * max_possible_score:
-            signal = "bearish"
+            signal = "卖出"
         else:
-            signal = "neutral"
+            signal = "中性"
 
         analysis_data[ticker] = {"signal": signal, "score": total_score, "max_score": max_possible_score, "earnings_analysis": earnings_analysis, "strength_analysis": strength_analysis, "valuation_analysis": valuation_analysis}
 
@@ -328,26 +328,37 @@ def generate_graham_output(
     template = ChatPromptTemplate.from_messages([
         (
             "system",
-            """You are a Benjamin Graham AI agent, making investment decisions using his principles:
-            1. Insist on a margin of safety by buying below intrinsic value (e.g., using Graham Number, net-net).
-            2. Emphasize the company's financial strength (low leverage, ample current assets).
-            3. Prefer stable earnings over multiple years.
-            4. Consider dividend record for extra safety.
-            5. Avoid speculative or high-growth assumptions; focus on proven metrics.
+            """你是一个基于本杰明·格雷厄姆原则的AI投资代理，做出投资决策时遵循以下原则：
+            1. 通过购买低于内在价值的股票（如格雷厄姆数、净流动资产价值）确保安全边际。
+            2. 强调公司的财务实力（低杠杆、充足的流动资产）。
+            3. 偏好多年稳定盈利。
+            4. 考虑分红记录以增加安全性。
+            5. 避免投机或高增长假设；专注于已验证的指标。
+            
+            在提供推理时，需全面且具体：
+            1. 解释影响决策的关键估值指标（格雷厄姆数、NCAV、P/E等）。
+            2. 突出具体的财务实力指标（流动比率、债务水平等）。
+            3. 引用盈利的稳定性或不稳定性。
+            4. 提供精确的定量证据。
+            5. 将当前指标与格雷厄姆的特定阈值比较（如“流动比率2.5超过格雷厄姆的最低要求2.0”）。
+            6. 使用本杰明·格雷厄姆保守、分析性的语气和风格。
+            
+            例如，看涨信号：“该股票以净流动资产价值35%的折扣交易，提供了充足的安全边际。流动比率2.5和债务权益比0.3表明财务状况强劲...”
+            例如，看跌信号：“尽管盈利稳定，但当前价格50美元超过了我们计算的格雷厄姆数35美元，没有安全边际。此外，流动比率仅为1.2低于格雷厄姆偏好的2.0阈值...”
                         
-            Return a rational recommendation: bullish, bearish, or neutral, with a confidence level (0-100) and concise reasoning.
+            返回一个理性的推荐：买入、卖出或中性，附带置信度（0-100）和详细的推理。
             """
         ),
         (
             "human",
-            """Based on the following analysis, create a Graham-style investment signal:
+            """根据以下分析，创建一个格雷厄姆式的投资信号：
 
-            Analysis Data for {ticker}:
+            股票{ticker} 的分析数据:
             {analysis_data}
 
-            Return JSON exactly in this format:
+            按照此格式返回 JSON:
             {{
-              "signal": "bullish" or "bearish" or "neutral",
+              "signal": "买入/中性/卖出",
               "confidence": float (0-100),
               "reasoning": "string"
             }}
@@ -361,7 +372,7 @@ def generate_graham_output(
     })
 
     def create_default_ben_graham_signal():
-        return BenGrahamSignal(signal="neutral", confidence=0.0, reasoning="Error in generating analysis; defaulting to neutral.")
+        return BenGrahamSignal(signal="中性", confidence=0.0, reasoning="Error in generating analysis; defaulting to neutral.")
 
     # 调用 call_llm 时不再传递 model_name 和 model_provider
     # model_name and model_provider are no longer passed when calling call_llm

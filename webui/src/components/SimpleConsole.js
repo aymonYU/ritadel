@@ -13,7 +13,7 @@ export default function SimpleConsole() {
     
     let ws = null;
     try {
-      ws = new WebSocket(`ws://localhost:5000/ws/logs`);
+      ws = new WebSocket(`ws://127.0.0.1:5000/ws/logs`);
       
       ws.onopen = () => {
         setConnected(true);

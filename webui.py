@@ -26,7 +26,7 @@ load_dotenv()
 # Configuration
 WEBUI_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "webui")
 DEFAULT_PORT = 3000
-DEFAULT_HOST = "localhost"
+DEFAULT_HOST = "127.0.0.1"
 API_PORT = 5000
 
 # Add src directory to Python path
