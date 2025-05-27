@@ -1,3 +1,10 @@
+"""
+技术分析代理 - 多策略技术分析系统
+Technical Analysis Agent - Multi-strategy technical analysis system
+
+实现综合技术分析，结合多种交易策略
+Implements comprehensive technical analysis combining multiple trading strategies
+"""
 import math
 
 from langchain_core.messages import HumanMessage
@@ -12,9 +19,16 @@ from tools.api import get_prices, prices_to_df
 from utils.progress import progress
 
 
-##### Technical Analyst #####
+##### 技术分析师 - Technical Analyst #####
 def technical_analyst_agent(state: AgentState):
     """
+    复杂的技术分析系统，结合多种交易策略分析多个股票代码：
+    1. 趋势跟踪 - Trend Following
+    2. 均值回归 - Mean Reversion  
+    3. 动量分析 - Momentum
+    4. 波动性分析 - Volatility Analysis
+    5. 统计套利信号 - Statistical Arbitrage Signals
+    
     Sophisticated technical analysis system that combines multiple trading strategies for multiple tickers:
     1. Trend Following
     2. Mean Reversion
@@ -27,13 +41,13 @@ def technical_analyst_agent(state: AgentState):
     end_date = data["end_date"]
     tickers = data["tickers"]
 
-    # Initialize analysis for each ticker
+    # 为每个股票代码初始化分析 - Initialize analysis for each ticker
     technical_analysis = {}
 
     for ticker in tickers:
         progress.update_status("technical_analyst_agent", ticker, "Analyzing price data")
 
-        # Get the historical price data
+        # 获取历史价格数据 - Get the historical price data
         prices = get_prices(
             ticker=ticker,
             start_date=start_date,
@@ -44,7 +58,7 @@ def technical_analyst_agent(state: AgentState):
             progress.update_status("technical_analyst_agent", ticker, "Failed: No price data found")
             continue
 
-        # Convert prices to a DataFrame
+        # 将价格转换为DataFrame - Convert prices to a DataFrame
         prices_df = prices_to_df(prices)
 
         progress.update_status("technical_analyst_agent", ticker, "Calculating trend signals")
@@ -62,13 +76,13 @@ def technical_analyst_agent(state: AgentState):
         progress.update_status("technical_analyst_agent", ticker, "Statistical analysis")
         stat_arb_signals = calculate_stat_arb_signals(prices_df)
 
-        # Combine all signals using a weighted ensemble approach
+        # 使用加权集成方法组合所有信号 - Combine all signals using a weighted ensemble approach
         strategy_weights = {
-            "trend": 0.25,
-            "mean_reversion": 0.20,
-            "momentum": 0.25,
-            "volatility": 0.15,
-            "stat_arb": 0.15,
+            "trend": 0.25,         # 趋势权重 - Trend weight
+            "mean_reversion": 0.20, # 均值回归权重 - Mean reversion weight
+            "momentum": 0.25,       # 动量权重 - Momentum weight
+            "volatility": 0.15,     # 波动性权重 - Volatility weight
+            "stat_arb": 0.15,      # 统计套利权重 - Statistical arbitrage weight
         }
 
         progress.update_status("technical_analyst_agent", ticker, "Combining signals")
@@ -83,7 +97,7 @@ def technical_analyst_agent(state: AgentState):
             strategy_weights,
         )
 
-        # Generate detailed analysis report for this ticker
+        # 为此股票代码生成详细的分析报告 - Generate detailed analysis report for this ticker
         technical_analysis[ticker] = {
             "signal": combined_signal["signal"],
             "confidence": round(combined_signal["confidence"] * 100),
@@ -117,7 +131,7 @@ def technical_analyst_agent(state: AgentState):
         }
         progress.update_status("technical_analyst_agent", ticker, "Done")
 
-    # Create the technical analyst message
+    # 创建技术分析师消息 - Create the technical analyst message
     message = HumanMessage(
         content=json.dumps(technical_analysis),
         name="technical_analyst_agent",
@@ -126,7 +140,7 @@ def technical_analyst_agent(state: AgentState):
     if state["metadata"]["show_reasoning"]:
         show_agent_reasoning(technical_analysis, "Technical Analyst")
 
-    # Add the signal to the analyst_signals list
+    # 将信号添加到analyst_signals列表 - Add the signal to the analyst_signals list
     state["data"]["analyst_signals"]["technical_analyst_agent"] = technical_analysis
 
     return {
@@ -137,31 +151,32 @@ def technical_analyst_agent(state: AgentState):
 
 def calculate_trend_signals(prices_df):
     """
+    使用多个时间框架和指标的高级趋势跟踪策略
     Advanced trend following strategy using multiple timeframes and indicators
     """
-    # Calculate EMAs for multiple timeframes
-    ema_8 = calculate_ema(prices_df, 8)
-    ema_21 = calculate_ema(prices_df, 21)
-    ema_55 = calculate_ema(prices_df, 55)
+    # 计算多个时间框架的EMA - Calculate EMAs for multiple timeframes
+    ema_8 = calculate_ema(prices_df, 8)   # 短期EMA - Short-term EMA
+    ema_21 = calculate_ema(prices_df, 21) # 中期EMA - Medium-term EMA
+    ema_55 = calculate_ema(prices_df, 55) # 长期EMA - Long-term EMA
 
-    # Calculate ADX for trend strength
+    # 计算ADX以确定趋势强度 - Calculate ADX for trend strength
     adx = calculate_adx(prices_df, 14)
 
-    # Determine trend direction and strength
-    short_trend = ema_8 > ema_21
-    medium_trend = ema_21 > ema_55
+    # 确定趋势方向和强度 - Determine trend direction and strength
+    short_trend = ema_8 > ema_21     # 短期趋势 - Short-term trend
+    medium_trend = ema_21 > ema_55   # 中期趋势 - Medium-term trend
 
-    # Combine signals with confidence weighting
+    # 结合信号与置信度权重 - Combine signals with confidence weighting
     trend_strength = adx["adx"].iloc[-1] / 100.0
 
     if short_trend.iloc[-1] and medium_trend.iloc[-1]:
-        signal = "bullish"
+        signal = "bullish"  # 看涨 - Bullish
         confidence = trend_strength
     elif not short_trend.iloc[-1] and not medium_trend.iloc[-1]:
-        signal = "bearish"
+        signal = "bearish"  # 看跌 - Bearish
         confidence = trend_strength
     else:
-        signal = "neutral"
+        signal = "neutral"  # 中性 - Neutral
         confidence = 0.5
 
     return {
@@ -176,32 +191,33 @@ def calculate_trend_signals(prices_df):
 
 def calculate_mean_reversion_signals(prices_df):
     """
+    使用统计测量和布林带的均值回归策略
     Mean reversion strategy using statistical measures and Bollinger Bands
     """
-    # Calculate z-score of price relative to moving average
+    # 计算相对于移动平均线的价格Z分数 - Calculate z-score of price relative to moving average
     ma_50 = prices_df["close"].rolling(window=50).mean()
     std_50 = prices_df["close"].rolling(window=50).std()
     z_score = (prices_df["close"] - ma_50) / std_50
 
-    # Calculate Bollinger Bands
+    # 计算布林带 - Calculate Bollinger Bands
     bb_upper, bb_lower = calculate_bollinger_bands(prices_df)
 
-    # Calculate RSI with multiple timeframes
+    # 计算多个时间框架的RSI - Calculate RSI with multiple timeframes
     rsi_14 = calculate_rsi(prices_df, 14)
     rsi_28 = calculate_rsi(prices_df, 28)
 
-    # Mean reversion signals
+    # 均值回归信号 - Mean reversion signals
     price_vs_bb = (prices_df["close"].iloc[-1] - bb_lower.iloc[-1]) / (bb_upper.iloc[-1] - bb_lower.iloc[-1])
 
-    # Combine signals
+    # 组合信号 - Combine signals
     if z_score.iloc[-1] < -2 and price_vs_bb < 0.2:
-        signal = "bullish"
+        signal = "bullish"  # 看涨 - 价格严重低估 - Bullish - severely undervalued
         confidence = min(abs(z_score.iloc[-1]) / 4, 1.0)
     elif z_score.iloc[-1] > 2 and price_vs_bb > 0.8:
-        signal = "bearish"
+        signal = "bearish"  # 看跌 - 价格严重高估 - Bearish - severely overvalued
         confidence = min(abs(z_score.iloc[-1]) / 4, 1.0)
     else:
-        signal = "neutral"
+        signal = "neutral"  # 中性 - Neutral
         confidence = 0.5
 
     return {

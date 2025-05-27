@@ -1,3 +1,7 @@
+"""
+回测模块 - 对AI投资策略进行历史数据测试
+Backtesting module - Testing AI investment strategies with historical data
+"""
 import sys
 
 from datetime import datetime, timedelta
@@ -27,6 +31,10 @@ init(autoreset=True)
 
 
 class Backtester:
+    """
+    回测器类 - 用于测试交易策略在历史数据上的表现
+    Backtester class - For testing trading strategy performance on historical data
+    """
     def __init__(
         self,
         agent: Callable,
@@ -43,16 +51,19 @@ class Backtester:
         # is_crypto: bool = False, # 移除了 is_crypto 参数，因为不再支持加密货币 (Removed is_crypto parameter as cryptocurrency is no longer supported)
     ):
         """
-        :param agent: The trading agent (Callable).
-        :param tickers: List of tickers to backtest.
-        :param start_date: Start date string (YYYY-MM-DD).
-        :param end_date: End date string (YYYY-MM-DD).
-        :param initial_capital: Starting portfolio cash.
-        # :param model_name: Which LLM model name to use (gpt-4, etc). # 已移除 (Removed)
-        # :param model_provider: Which LLM provider (OpenAI, etc). # 已移除 (Removed)
-        :param selected_analysts: List of analyst names or IDs to incorporate.
-        :param initial_margin_requirement: The margin ratio (e.g. 0.5 = 50%).
-        # :param is_crypto: Whether to analyze cryptocurrency instead of stocks. # is_crypto 参数说明已移除 (is_crypto parameter description removed)
+        初始化回测器
+        Initialize the backtester
+        
+        :param agent: 交易代理（可调用对象） - The trading agent (Callable).
+        :param tickers: 要回测的股票代码列表 - List of tickers to backtest.
+        :param start_date: 开始日期字符串 (YYYY-MM-DD) - Start date string (YYYY-MM-DD).
+        :param end_date: 结束日期字符串 (YYYY-MM-DD) - End date string (YYYY-MM-DD).
+        :param initial_capital: 起始投资组合现金 - Starting portfolio cash.
+        # :param model_name: 使用的LLM模型名称 (gpt-4, etc). # 已移除 (Removed)
+        # :param model_provider: LLM提供商 (OpenAI, etc). # 已移除 (Removed)
+        :param selected_analysts: 要包含的分析师名称或ID列表 - List of analyst names or IDs to incorporate.
+        :param initial_margin_requirement: 保证金比率 (e.g. 0.5 = 50%) - The margin ratio (e.g. 0.5 = 50%).
+        # :param is_crypto: 是否分析加密货币而不是股票 - Whether to analyze cryptocurrency instead of stocks. # is_crypto 参数说明已移除 (is_crypto parameter description removed)
         """
         self.agent = agent
         self.tickers = tickers
@@ -64,9 +75,11 @@ class Backtester:
         self.selected_analysts = selected_analysts
         # self.is_crypto = is_crypto # 移除了 is_crypto 实例变量的赋值 (Removed assignment of is_crypto instance variable)
 
+        # 存储保证金比率 (e.g. 0.5 means 50% margin required).
         # Store the margin ratio (e.g. 0.5 means 50% margin required).
         self.margin_ratio = initial_margin_requirement
 
+        # 初始化支持多空头寸的投资组合
         # Initialize portfolio with support for long/short positions
         self.portfolio_values = []
         self.portfolio = {
@@ -91,7 +104,11 @@ class Backtester:
 
     def execute_trade(self, ticker: str, action: str, quantity: float, current_price: float):
         """
+        执行交易，支持多空头寸
         Execute trades with support for both long and short positions.
+        
+        `quantity` 是代理想要买入/卖出/做空/平仓的股票数量。
+        为简单起见，我们只交易整数股票。
         `quantity` is the number of shares the agent wants to buy/sell/short/cover.
         We will only trade integer shares to keep it simple.
         """
@@ -102,8 +119,10 @@ class Backtester:
         position = self.portfolio["positions"][ticker]
 
         if action == "buy":
+            # 买入操作 - Buy operation
             cost = quantity * current_price
             if cost <= self.portfolio["cash"]:
+                # 为新总数计算加权平均成本基础
                 # Weighted average cost basis for the new total
                 old_shares = position["long"]
                 old_cost_basis = position["long_cost_basis"]
@@ -119,7 +138,7 @@ class Backtester:
                 self.portfolio["cash"] -= cost
                 return quantity
             else:
-                # Calculate maximum affordable quantity
+                # 计算最大可承受数量 - Calculate maximum affordable quantity
                 max_quantity = int(self.portfolio["cash"] / current_price)
                 if max_quantity > 0:
                     cost = max_quantity * current_price
@@ -138,9 +157,11 @@ class Backtester:
                 return 0
 
         elif action == "sell":
+            # 卖出操作 - Sell operation
             # You can only sell as many as you own
             quantity = min(quantity, position["long"])
             if quantity > 0:
+                # 使用平均成本基础计算已实现收益/损失
                 # Realized gain/loss using average cost basis
                 avg_cost_per_share = position["long_cost_basis"] if position["long"] > 0 else 0
                 realized_gain = (current_price - avg_cost_per_share) * quantity
@@ -156,15 +177,16 @@ class Backtester:
 
         elif action == "short":
             """
+            典型的卖空流程：
             Typical short sale flow:
-              1) Receive proceeds = current_price * quantity
-              2) Post margin_required = proceeds * margin_ratio
-              3) Net effect on cash = +proceeds - margin_required
+              1) 收到收益 = current_price * quantity - Receive proceeds = current_price * quantity
+              2) 发布所需保证金 = proceeds * margin_ratio - Post margin_required = proceeds * margin_ratio
+              3) 对现金的净影响 = +proceeds - margin_required - Net effect on cash = +proceeds - margin_required
             """
             proceeds = current_price * quantity
             margin_required = proceeds * self.margin_ratio
             if margin_required <= self.portfolio["cash"]:
-                # Weighted average short cost basis
+                # 加权平均做空成本基础 - Weighted average short cost basis
                 old_short_shares = position["short"]
                 old_cost_basis = position["short_cost_basis"]
                 new_shares = quantity
@@ -177,16 +199,17 @@ class Backtester:
 
                 position["short"] += quantity
 
-                # Update margin usage
+                # 更新保证金使用情况 - Update margin usage
                 position["short_margin_used"] += margin_required
                 self.portfolio["margin_used"] += margin_required
 
+                # 增加收益现金，然后减去所需保证金
                 # Increase cash by proceeds, then subtract the required margin
                 self.portfolio["cash"] += proceeds
                 self.portfolio["cash"] -= margin_required
                 return quantity
             else:
-                # Calculate maximum shortable quantity
+                # 计算最大可做空数量 - Calculate maximum shortable quantity
                 if self.margin_ratio > 0:
                     max_quantity = int(self.portfolio["cash"] / (current_price * self.margin_ratio))
                 else:

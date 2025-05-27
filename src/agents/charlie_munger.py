@@ -9,7 +9,16 @@ from typing_extensions import Literal
 from utils.progress import progress
 from utils.llm import call_llm
 
+"""
+Charlie Munger投资分析师代理 - 基于查理·芒格的投资原则和心理模型
+Charlie Munger investing analyst agent - Based on Charlie Munger's investing principles and mental models
+"""
+
 class CharlieMungerSignal(BaseModel):
+    """
+    Charlie Munger分析信号模型 - 包含投资信号、置信度和推理
+    Charlie Munger analysis signal model - Contains investment signal, confidence and reasoning
+    """
     signal: Literal["bullish", "bearish", "neutral"]
     confidence: float
     reasoning: str
@@ -17,98 +26,121 @@ class CharlieMungerSignal(BaseModel):
 
 def charlie_munger_agent(state: AgentState):
     """
+    使用查理·芒格的投资原则和心理模型分析股票
+    专注于护城河强度、管理质量、可预测性和估值
+    芒格的核心理念：
+    1. 寻找具有强大护城河的优质企业
+    2. 重视管理层的诚信和能力
+    3. 偏好简单、可预测的商业模式
+    4. 采用逆向思维和多学科方法
+    5. 长期持有优质企业
+    
     Analyzes stocks using Charlie Munger's investing principles and mental models.
     Focuses on moat strength, management quality, predictability, and valuation.
+    Munger's core philosophy:
+    1. Look for high-quality businesses with strong moats
+    2. Value management integrity and competence
+    3. Prefer simple, predictable business models
+    4. Use inversion thinking and multidisciplinary approach
+    5. Hold quality businesses for the long term
     """
     data = state["data"]
     end_date = data["end_date"]
     tickers = data["tickers"]
     
+    # 收集分析数据 - Collect analysis data
     analysis_data = {}
     munger_analysis = {}
     
     for ticker in tickers:
         progress.update_status("charlie_munger_agent", ticker, "Fetching financial metrics")
-        metrics = get_financial_metrics(ticker, end_date, period="annual", limit=10)  # Munger looks at longer periods
+        # 芒格关注长期数据 - Munger looks at longer periods
+        metrics = get_financial_metrics(ticker, end_date, period="annual", limit=10)
         
         progress.update_status("charlie_munger_agent", ticker, "Gathering financial line items")
+        # 获取芒格分析所需的关键财务指标 - Fetch key financial metrics for Munger's analysis
         financial_line_items = search_line_items(
             ticker,
             [
-                "revenue",
-                "net_income",
-                "operating_income",
-                "return_on_invested_capital",
-                "gross_margin",
-                "operating_margin",
-                "free_cash_flow",
-                "capital_expenditure",
-                "cash_and_equivalents",
-                "total_debt",
-                "shareholders_equity",
-                "outstanding_shares",
-                "research_and_development",
-                "goodwill_and_intangible_assets",
+                "revenue",  # 收入
+                "net_income",  # 净收入
+                "operating_income",  # 营业收入
+                "return_on_invested_capital",  # 投资资本回报率
+                "gross_margin",  # 毛利率
+                "operating_margin",  # 营业利润率
+                "free_cash_flow",  # 自由现金流
+                "capital_expenditure",  # 资本支出
+                "cash_and_equivalents",  # 现金及等价物
+                "total_debt",  # 总债务
+                "shareholders_equity",  # 股东权益
+                "outstanding_shares",  # 流通股数
+                "research_and_development",  # 研发费用
+                "goodwill_and_intangible_assets",  # 商誉和无形资产
             ],
             end_date,
             period="annual",
-            limit=10  # Munger examines long-term trends
+            limit=10  # 芒格重视长期趋势分析 - Munger examines long-term trends
         )
         
         progress.update_status("charlie_munger_agent", ticker, "Getting market cap")
         market_cap = get_market_cap(ticker, end_date)
         
         progress.update_status("charlie_munger_agent", ticker, "Fetching insider trades")
-        # Munger values management with skin in the game
+        # 芒格重视管理层的利益一致性 - Munger values management with skin in the game
         insider_trades = get_insider_trades(
             ticker,
             end_date,
-            # Look back 2 years for insider trading patterns
+            # 回溯2年查看内部交易模式 - Look back 2 years for insider trading patterns
             start_date=None,
             limit=100
         )
         
         progress.update_status("charlie_munger_agent", ticker, "Fetching company news")
-        # Munger avoids businesses with frequent negative press
+        # 芒格避免负面新闻频繁的企业 - Munger avoids businesses with frequent negative press
         company_news = get_company_news(
             ticker,
             end_date,
-            # Look back 1 year for news
+            # 回溯1年查看新闻 - Look back 1 year for news
             start_date=None,
             limit=100
         )
         
         progress.update_status("charlie_munger_agent", ticker, "Analyzing moat strength")
+        # 分析护城河强度 - Analyze moat strength
         moat_analysis = analyze_moat_strength(metrics, financial_line_items)
         
         progress.update_status("charlie_munger_agent", ticker, "Analyzing management quality")
+        # 分析管理质量 - Analyze management quality
         management_analysis = analyze_management_quality(financial_line_items, insider_trades)
         
         progress.update_status("charlie_munger_agent", ticker, "Analyzing business predictability")
+        # 分析业务可预测性 - Analyze business predictability
         predictability_analysis = analyze_predictability(financial_line_items)
         
         progress.update_status("charlie_munger_agent", ticker, "Calculating Munger-style valuation")
+        # 计算芒格式估值 - Calculate Munger-style valuation
         valuation_analysis = calculate_munger_valuation(financial_line_items, market_cap)
         
-        # Combine partial scores with Munger's weighting preferences
-        # Munger weights quality and predictability higher than current valuation
+        # 根据芒格的权重偏好合并评分 - Combine partial scores with Munger's weighting preferences
+        # 芒格更重视质量和可预测性，而非当前估值 - Munger weights quality and predictability higher than current valuation
         total_score = (
-            moat_analysis["score"] * 0.35 +
-            management_analysis["score"] * 0.25 +
-            predictability_analysis["score"] * 0.25 +
-            valuation_analysis["score"] * 0.15
+            moat_analysis["score"] * 0.35 +  # 护城河权重35% - Moat weight 35%
+            management_analysis["score"] * 0.25 +  # 管理层权重25% - Management weight 25%
+            predictability_analysis["score"] * 0.25 +  # 可预测性权重25% - Predictability weight 25%
+            valuation_analysis["score"] * 0.15  # 估值权重15% - Valuation weight 15%
         )
         
-        max_possible_score = 10  # Scale to 0-10
+        max_possible_score = 10  # 标准化到0-10分 - Scale to 0-10
         
-        # Generate a simple buy/hold/sell signal
-        if total_score >= 7.5:  # Munger has very high standards
+        # 生成买入/持有/卖出信号 - Generate a simple buy/hold/sell signal
+        if total_score >= 7.5:  # 芒格的标准极高 - Munger has very high standards
             signal = "bullish"
         elif total_score <= 4.5:
             signal = "bearish"
         else:
             signal = "neutral"
         
+        # 整合所有分析数据 - Combine all analysis data
         analysis_data[ticker] = {
             "signal": signal,
             "score": total_score,
@@ -117,7 +149,7 @@ def charlie_munger_agent(state: AgentState):
             "management_analysis": management_analysis,
             "predictability_analysis": predictability_analysis,
             "valuation_analysis": valuation_analysis,
-            # Include some qualitative assessment from news
+            # 包含新闻定性评估 - Include some qualitative assessment from news
             "news_sentiment": analyze_news_sentiment(company_news) if company_news else "No news data available"
         }
         
@@ -125,8 +157,6 @@ def charlie_munger_agent(state: AgentState):
         munger_output = generate_munger_output(
             ticker=ticker, 
             analysis_data=analysis_data,
-            model_name=state["metadata"]["model_name"],
-            model_provider=state["metadata"]["model_provider"],
         )
         
         munger_analysis[ticker] = {
@@ -137,17 +167,17 @@ def charlie_munger_agent(state: AgentState):
         
         progress.update_status("charlie_munger_agent", ticker, "Done")
     
-    # Wrap results in a single message for the chain
+    # 将结果包装在单个消息中以供链式传递 - Wrap results in a single message for the chain
     message = HumanMessage(
         content=json.dumps(munger_analysis),
         name="charlie_munger_agent"
     )
     
-    # Show reasoning if requested
+    # 如果请求，显示推理过程 - Show reasoning if requested
     if state["metadata"]["show_reasoning"]:
         show_agent_reasoning(munger_analysis, "Charlie Munger Agent")
     
-    # Add signals to the overall state
+    # 将信号添加到整体状态 - Add signals to the overall state
     state["data"]["analyst_signals"]["charlie_munger_agent"] = munger_analysis
 
     return {
@@ -158,6 +188,12 @@ def charlie_munger_agent(state: AgentState):
 
 def analyze_moat_strength(metrics: list, financial_line_items: list) -> dict:
     """
+    使用芒格的方法分析企业的竞争优势：
+    - 持续的高投资资本回报率(ROIC)
+    - 定价权（稳定/改善的毛利率）
+    - 低资本需求
+    - 网络效应和无形资产（研发投资、商誉）
+    
     Analyze the business's competitive advantage using Munger's approach:
     - Consistent high returns on capital (ROIC)
     - Pricing power (stable/improving gross margins)
@@ -173,17 +209,18 @@ def analyze_moat_strength(metrics: list, financial_line_items: list) -> dict:
             "details": "Insufficient data to analyze moat strength"
         }
     
-    # 1. Return on Invested Capital (ROIC) analysis - Munger's favorite metric
+    # 1. 投资资本回报率(ROIC)分析 - 芒格最喜欢的指标
+    # Return on Invested Capital (ROIC) analysis - Munger's favorite metric
     roic_values = [item.return_on_invested_capital for item in financial_line_items 
                    if hasattr(item, 'return_on_invested_capital') and item.return_on_invested_capital is not None]
     
     if roic_values:
-        # Check if ROIC consistently above 15% (Munger's threshold)
+        # 检查ROIC是否持续高于15%（芒格的阈值）- Check if ROIC consistently above 15% (Munger's threshold)
         high_roic_count = sum(1 for r in roic_values if r > 0.15)
-        if high_roic_count >= len(roic_values) * 0.8:  # 80% of periods show high ROIC
+        if high_roic_count >= len(roic_values) * 0.8:  # 80%的周期显示高ROIC - 80% of periods show high ROIC
             score += 3
             details.append(f"Excellent ROIC: >15% in {high_roic_count}/{len(roic_values)} periods")
-        elif high_roic_count >= len(roic_values) * 0.5:  # 50% of periods
+        elif high_roic_count >= len(roic_values) * 0.5:  # 50%的周期 - 50% of periods
             score += 2
             details.append(f"Good ROIC: >15% in {high_roic_count}/{len(roic_values)} periods")
         elif high_roic_count > 0:
@@ -194,7 +231,8 @@ def analyze_moat_strength(metrics: list, financial_line_items: list) -> dict:
     else:
         details.append("No ROIC data available")
     
-    # 2. Pricing power - check gross margin stability and trends
+    # 2. 定价权 - 检查毛利率稳定性和趋势
+    # Pricing power - check gross margin stability and trends
     gross_margins = [item.gross_margin for item in financial_line_items 
                     if hasattr(item, 'gross_margin') and item.gross_margin is not None]
     
@@ -264,6 +302,13 @@ def analyze_moat_strength(metrics: list, financial_line_items: list) -> dict:
 
 def analyze_management_quality(financial_line_items: list, insider_trades: list) -> dict:
     """
+    使用芒格的标准评估管理质量：
+    - 资本配置智慧
+    - 内部人员持股和交易
+    - 现金管理效率
+    - 坦诚和透明度
+    - 长期专注
+    
     Evaluate management quality using Munger's criteria:
     - Capital allocation wisdom
     - Insider ownership and transactions
@@ -280,8 +325,9 @@ def analyze_management_quality(financial_line_items: list, insider_trades: list)
             "details": "Insufficient data to analyze management quality"
         }
     
-    # 1. Capital allocation - Check FCF to net income ratio
-    # Munger values companies that convert earnings to cash
+    # 1. 资本配置 - 检查自由现金流与净收入比率
+    # Capital allocation - Check FCF to net income ratio
+    # 芒格重视将收益转化为现金的公司 - Munger values companies that convert earnings to cash
     fcf_values = [item.free_cash_flow for item in financial_line_items 
                  if hasattr(item, 'free_cash_flow') and item.free_cash_flow is not None]
     
@@ -289,7 +335,7 @@ def analyze_management_quality(financial_line_items: list, insider_trades: list)
                         if hasattr(item, 'net_income') and item.net_income is not None]
     
     if fcf_values and net_income_values and len(fcf_values) == len(net_income_values):
-        # Calculate FCF to Net Income ratio for each period
+        # 计算每个周期的自由现金流与净收入比率 - Calculate FCF to Net Income ratio for each period
         fcf_to_ni_ratios = []
         for i in range(len(fcf_values)):
             if net_income_values[i] and net_income_values[i] > 0:
@@ -297,13 +343,13 @@ def analyze_management_quality(financial_line_items: list, insider_trades: list)
         
         if fcf_to_ni_ratios:
             avg_ratio = sum(fcf_to_ni_ratios) / len(fcf_to_ni_ratios)
-            if avg_ratio > 1.1:  # FCF > net income suggests good accounting
+            if avg_ratio > 1.1:  # 自由现金流 > 净收入表明良好的会计核算 - FCF > net income suggests good accounting
                 score += 3
                 details.append(f"Excellent cash conversion: FCF/NI ratio of {avg_ratio:.2f}")
-            elif avg_ratio > 0.9:  # FCF roughly equals net income
+            elif avg_ratio > 0.9:  # 自由现金流大致等于净收入 - FCF roughly equals net income
                 score += 2
                 details.append(f"Good cash conversion: FCF/NI ratio of {avg_ratio:.2f}")
-            elif avg_ratio > 0.7:  # FCF somewhat lower than net income
+            elif avg_ratio > 0.7:  # 自由现金流略低于净收入 - FCF somewhat lower than net income
                 score += 1
                 details.append(f"Moderate cash conversion: FCF/NI ratio of {avg_ratio:.2f}")
             else:
@@ -313,7 +359,7 @@ def analyze_management_quality(financial_line_items: list, insider_trades: list)
     else:
         details.append("Missing FCF or Net Income data")
     
-    # 2. Debt management - Munger is cautious about debt
+    # 2. 债务管理 - 芒格对债务谨慎 - Debt management - Munger is cautious about debt
     debt_values = [item.total_debt for item in financial_line_items 
                   if hasattr(item, 'total_debt') and item.total_debt is not None]
     
@@ -321,16 +367,16 @@ def analyze_management_quality(financial_line_items: list, insider_trades: list)
                     if hasattr(item, 'shareholders_equity') and item.shareholders_equity is not None]
     
     if debt_values and equity_values and len(debt_values) == len(equity_values):
-        # Calculate D/E ratio for most recent period
+        # 计算最近期的债务股权比 - Calculate D/E ratio for most recent period
         recent_de_ratio = debt_values[0] / equity_values[0] if equity_values[0] > 0 else float('inf')
         
-        if recent_de_ratio < 0.3:  # Very low debt
+        if recent_de_ratio < 0.3:  # 极低债务 - Very low debt
             score += 3
             details.append(f"Conservative debt management: D/E ratio of {recent_de_ratio:.2f}")
-        elif recent_de_ratio < 0.7:  # Moderate debt
+        elif recent_de_ratio < 0.7:  # 适度债务 - Moderate debt
             score += 2
             details.append(f"Prudent debt management: D/E ratio of {recent_de_ratio:.2f}")
-        elif recent_de_ratio < 1.5:  # Higher but still reasonable debt
+        elif recent_de_ratio < 1.5:  # 较高但仍合理的债务 - Higher but still reasonable debt
             score += 1
             details.append(f"Moderate debt level: D/E ratio of {recent_de_ratio:.2f}")
         else:
@@ -338,53 +384,55 @@ def analyze_management_quality(financial_line_items: list, insider_trades: list)
     else:
         details.append("Missing debt or equity data")
     
-    # 3. Cash management efficiency - Munger values appropriate cash levels
+    # 3. 现金管理效率 - 芒格重视适当的现金水平
+    # Cash management efficiency - Munger values appropriate cash levels
     cash_values = [item.cash_and_equivalents for item in financial_line_items
                   if hasattr(item, 'cash_and_equivalents') and item.cash_and_equivalents is not None]
     revenue_values = [item.revenue for item in financial_line_items
                      if hasattr(item, 'revenue') and item.revenue is not None]
     
     if cash_values and revenue_values and len(cash_values) > 0 and len(revenue_values) > 0:
+        # 计算现金收入比（芒格认为大多数企业适宜的比例为10-20%）
         # Calculate cash to revenue ratio (Munger likes 10-20% for most businesses)
         cash_to_revenue = cash_values[0] / revenue_values[0] if revenue_values[0] > 0 else 0
         
         if 0.1 <= cash_to_revenue <= 0.25:
-            # Goldilocks zone - not too much, not too little
+            # 黄金地带 - 不太多，不太少 - Goldilocks zone - not too much, not too little
             score += 2
             details.append(f"Prudent cash management: Cash/Revenue ratio of {cash_to_revenue:.2f}")
         elif 0.05 <= cash_to_revenue < 0.1 or 0.25 < cash_to_revenue <= 0.4:
-            # Reasonable but not ideal
+            # 合理但不理想 - Reasonable but not ideal
             score += 1
             details.append(f"Acceptable cash position: Cash/Revenue ratio of {cash_to_revenue:.2f}")
         elif cash_to_revenue > 0.4:
-            # Too much cash - potentially inefficient capital allocation
+            # 现金过多 - 可能资本配置效率低下 - Too much cash - potentially inefficient capital allocation
             details.append(f"Excess cash reserves: Cash/Revenue ratio of {cash_to_revenue:.2f}")
         else:
-            # Too little cash - potentially risky
+            # 现金太少 - 可能有风险 - Too little cash - potentially risky
             details.append(f"Low cash reserves: Cash/Revenue ratio of {cash_to_revenue:.2f}")
     else:
         details.append("Insufficient cash or revenue data")
     
-    # 4. Insider activity - Munger values skin in the game
+    # 4. 内部人员活动 - 芒格重视利益一致性 - Insider activity - Munger values skin in the game
     if insider_trades and len(insider_trades) > 0:
-        # Count buys vs. sells
+        # 统计买入vs卖出 - Count buys vs. sells
         buys = sum(1 for trade in insider_trades if hasattr(trade, 'transaction_type') and 
                    trade.transaction_type and trade.transaction_type.lower() in ['buy', 'purchase'])
         sells = sum(1 for trade in insider_trades if hasattr(trade, 'transaction_type') and 
                     trade.transaction_type and trade.transaction_type.lower() in ['sell', 'sale'])
         
-        # Calculate the buy ratio
+        # 计算买入比例 - Calculate the buy ratio
         total_trades = buys + sells
         if total_trades > 0:
             buy_ratio = buys / total_trades
-            if buy_ratio > 0.7:  # Strong insider buying
+            if buy_ratio > 0.7:  # 强烈的内部人员买入 - Strong insider buying
                 score += 2
                 details.append(f"Strong insider buying: {buys}/{total_trades} transactions are purchases")
-            elif buy_ratio > 0.4:  # Balanced insider activity
+            elif buy_ratio > 0.4:  # 平衡的内部人员活动 - Balanced insider activity
                 score += 1
                 details.append(f"Balanced insider trading: {buys}/{total_trades} transactions are purchases")
-            elif buy_ratio < 0.1 and sells > 5:  # Heavy selling
-                score -= 1  # Penalty for excessive selling
+            elif buy_ratio < 0.1 and sells > 5:  # 大量卖出 - Heavy selling
+                score -= 1  # 过度卖出的惩罚 - Penalty for excessive selling
                 details.append(f"Concerning insider selling: {sells}/{total_trades} transactions are sales")
             else:
                 details.append(f"Mixed insider activity: {buys}/{total_trades} transactions are purchases")
@@ -393,27 +441,28 @@ def analyze_management_quality(financial_line_items: list, insider_trades: list)
     else:
         details.append("No insider trading data available")
     
-    # 5. Consistency in share count - Munger prefers stable/decreasing shares
+    # 5. 股数一致性 - 芒格偏好稳定/减少的股数
+    # Consistency in share count - Munger prefers stable/decreasing shares
     share_counts = [item.outstanding_shares for item in financial_line_items
                    if hasattr(item, 'outstanding_shares') and item.outstanding_shares is not None]
     
     if share_counts and len(share_counts) >= 3:
-        if share_counts[0] < share_counts[-1] * 0.95:  # 5%+ reduction in shares
+        if share_counts[0] < share_counts[-1] * 0.95:  # 股数减少5%以上 - 5%+ reduction in shares
             score += 2
             details.append("Shareholder-friendly: Reducing share count over time")
-        elif share_counts[0] < share_counts[-1] * 1.05:  # Stable share count
+        elif share_counts[0] < share_counts[-1] * 1.05:  # 稳定的股数 - Stable share count
             score += 1
             details.append("Stable share count: Limited dilution")
-        elif share_counts[0] > share_counts[-1] * 1.2:  # >20% dilution
-            score -= 1  # Penalty for excessive dilution
+        elif share_counts[0] > share_counts[-1] * 1.2:  # 稀释超过20% - >20% dilution
+            score -= 1  # 过度稀释的惩罚 - Penalty for excessive dilution
             details.append("Concerning dilution: Share count increased significantly")
         else:
             details.append("Moderate share count increase over time")
     else:
         details.append("Insufficient share count data")
     
-    # Scale score to 0-10 range
-    # Maximum possible raw score would be 12 (3+3+2+2+2)
+    # 将评分标准化到0-10范围 - Scale score to 0-10 range
+    # 最大可能原始分数为12 (3+3+2+2+2) - Maximum possible raw score would be 12 (3+3+2+2+2)
     final_score = max(0, min(10, score * 10 / 12))
     
     return {

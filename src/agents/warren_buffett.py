@@ -1,3 +1,7 @@
+"""
+Warren Buffett价值投资分析师代理 - 基于沃伦·巴菲特的投资原则
+Warren Buffett value investing analyst agent - Based on Warren Buffett's investment principles
+"""
 from graph.state import AgentState, show_agent_reasoning
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.messages import HumanMessage
@@ -10,24 +14,42 @@ from utils.progress import progress
 
 
 class WarrenBuffettSignal(BaseModel):
+    """
+    Warren Buffett分析信号模型 - 包含投资信号、置信度和推理
+    Warren Buffett analysis signal model - Contains investment signal, confidence and reasoning
+    """
     signal: Literal["买入", "卖出", "中性"]
     confidence: float
     reasoning: str
 
 
 def warren_buffett_agent(state: AgentState):
-    """Analyzes stocks using Buffett's principles and LLM reasoning."""
+    """
+    使用巴菲特的投资原则分析股票，包括LLM推理
+    运用巴菲特的核心投资理念：
+    1. 寻找具有可持续竞争优势的高质量企业
+    2. 强调长期增长和盈利稳定性
+    3. 注重内在价值与市场价格的安全边际
+    4. 偏好简单易懂的商业模式
+    
+    Analyzes stocks using Buffett's principles and LLM reasoning.
+    Applies Buffett's core investment philosophy:
+    1. Look for high-quality companies with sustainable competitive advantages
+    2. Emphasize long-term growth and earnings stability  
+    3. Focus on margin of safety between intrinsic value and market price
+    4. Prefer simple, understandable business models
+    """
     data = state["data"]
     end_date = data["end_date"]
     tickers = data["tickers"]
 
-    # Collect all analysis for LLM reasoning
+    # 收集所有分析数据供LLM推理 - Collect all analysis for LLM reasoning
     analysis_data = {}
     buffett_analysis = {}
 
     for ticker in tickers:
         progress.update_status("warren_buffett_agent", ticker, "Fetching financial metrics")
-        # Fetch required data
+        # 获取所需数据 - Fetch required data
         metrics = get_financial_metrics(ticker, end_date, period="ttm", limit=5)
 
         progress.update_status("warren_buffett_agent", ticker, "Gathering financial line items")
@@ -47,11 +69,11 @@ def warren_buffett_agent(state: AgentState):
         )
 
         progress.update_status("warren_buffett_agent", ticker, "Getting market cap")
-        # Get current market cap
+        # 获取当前市值 - Get current market cap
         market_cap = get_market_cap(ticker, end_date)
 
         progress.update_status("warren_buffett_agent", ticker, "Analyzing fundamentals")
-        # Analyze fundamentals
+        # 分析基本面 - Analyze fundamentals
         fundamental_analysis = analyze_fundamentals(metrics)
 
         progress.update_status("warren_buffett_agent", ticker, "Analyzing consistency")
@@ -60,22 +82,24 @@ def warren_buffett_agent(state: AgentState):
         progress.update_status("warren_buffett_agent", ticker, "Calculating intrinsic value")
         intrinsic_value_analysis = calculate_intrinsic_value(financial_line_items)
 
-        # Calculate total score
+        # 计算总分 - Calculate total score
         total_score = fundamental_analysis["score"] + consistency_analysis["score"]
         max_possible_score = 10
 
+        # 如果有内在价值和当前价格，添加安全边际分析
         # Add margin of safety analysis if we have both intrinsic value and current price
         margin_of_safety = None
         intrinsic_value = intrinsic_value_analysis["intrinsic_value"]
         if intrinsic_value and market_cap:
             margin_of_safety = (intrinsic_value - market_cap) / market_cap
 
+            # 如果有良好的安全边际（>30%），加分
             # Add to score if there's a good margin of safety (>30%)
             if margin_of_safety > 0.3:
                 total_score += 2
                 max_possible_score += 2
 
-        # Generate trading signal
+        # 生成交易信号 - Generate trading signal
         if total_score >= 0.7 * max_possible_score:
             signal = "买入"
         elif total_score <= 0.3 * max_possible_score:
@@ -83,7 +107,7 @@ def warren_buffett_agent(state: AgentState):
         else:
             signal = "中性"
 
-        # Combine all analysis results
+        # 合并所有分析结果 - Combine all analysis results
         analysis_data[ticker] = {
             "signal": signal,
             "score": total_score,
@@ -99,10 +123,9 @@ def warren_buffett_agent(state: AgentState):
         buffett_output = generate_buffett_output(
             ticker=ticker,
             analysis_data=analysis_data,
-            model_name=state["metadata"]["model_name"],
-            model_provider=state["metadata"]["model_provider"],
         )
 
+        # 以与其他代理一致的格式存储分析
         # Store analysis in consistent format with other agents
         buffett_analysis[ticker] = {
             "signal": buffett_output.signal,
@@ -112,31 +135,37 @@ def warren_buffett_agent(state: AgentState):
 
         progress.update_status("warren_buffett_agent", ticker, "Done")
 
-    # Create the message
+    # 创建消息 - Create the message
     message = HumanMessage(content=json.dumps(buffett_analysis), name="warren_buffett_agent")
 
-    # Show reasoning if requested
+    # 如果请求，显示推理过程 - Show reasoning if requested
     if state["metadata"]["show_reasoning"]:
         show_agent_reasoning(buffett_analysis, "Warren Buffett Agent")
 
-    # Add the signal to the analyst_signals list
+    # 将信号添加到分析师信号列表 - Add the signal to the analyst_signals list
     state["data"]["analyst_signals"]["warren_buffett_agent"] = buffett_analysis
 
     return {"messages": [message], "data": state["data"]}
 
 
 def analyze_fundamentals(metrics: list) -> dict[str, any]:
-    """Analyze company fundamentals based on Buffett's criteria."""
+    """
+    基于巴菲特标准分析公司基本面
+    关注指标：ROE、债务股权比、营业利润率、流动比率
+    
+    Analyze company fundamentals based on Buffett's criteria.
+    Focus metrics: ROE, debt-to-equity, operating margin, current ratio
+    """
     if not metrics:
         return {"score": 0, "details": "Insufficient fundamental data"}
 
-    # Get latest metrics
+    # 获取最新指标 - Get latest metrics
     latest_metrics = metrics[0]
 
     score = 0
     reasoning = []
 
-    # Check ROE (Return on Equity)
+    # 检查ROE（股本回报率）- Check ROE (Return on Equity)
     if latest_metrics.return_on_equity and latest_metrics.return_on_equity > 0.15:  # 15% ROE threshold
         score += 2
         reasoning.append(f"Strong ROE of {latest_metrics.return_on_equity:.1%}")
@@ -145,7 +174,7 @@ def analyze_fundamentals(metrics: list) -> dict[str, any]:
     else:
         reasoning.append("ROE data not available")
 
-    # Check Debt to Equity
+    # 检查债务股权比 - Check Debt to Equity
     if latest_metrics.debt_to_equity and latest_metrics.debt_to_equity < 0.5:
         score += 2
         reasoning.append("Conservative debt levels")
@@ -154,7 +183,7 @@ def analyze_fundamentals(metrics: list) -> dict[str, any]:
     else:
         reasoning.append("Debt to equity data not available")
 
-    # Check Operating Margin
+    # 检查营业利润率 - Check Operating Margin
     if latest_metrics.operating_margin and latest_metrics.operating_margin > 0.15:
         score += 2
         reasoning.append("Strong operating margins")
@@ -163,7 +192,7 @@ def analyze_fundamentals(metrics: list) -> dict[str, any]:
     else:
         reasoning.append("Operating margin data not available")
 
-    # Check Current Ratio
+    # 检查流动比率 - Check Current Ratio
     if latest_metrics.current_ratio and latest_metrics.current_ratio > 1.5:
         score += 1
         reasoning.append("Good liquidity position")
@@ -176,14 +205,20 @@ def analyze_fundamentals(metrics: list) -> dict[str, any]:
 
 
 def analyze_consistency(financial_line_items: list) -> dict[str, any]:
-    """Analyze earnings consistency and growth."""
-    if len(financial_line_items) < 4:  # Need at least 4 periods for trend analysis
+    """
+    分析盈利一致性和增长性
+    巴菲特偏好长期稳定增长的公司
+    
+    Analyze earnings consistency and growth.
+    Buffett prefers companies with long-term stable growth
+    """
+    if len(financial_line_items) < 4:  # 趋势分析至少需要4个周期 - Need at least 4 periods for trend analysis
         return {"score": 0, "details": "Insufficient historical data"}
 
     score = 0
     reasoning = []
 
-    # Check earnings growth trend
+    # 检查盈利增长趋势 - Check earnings growth trend
     earnings_values = [item.net_income for item in financial_line_items if item.net_income]
     if len(earnings_values) >= 4:
         earnings_growth = all(earnings_values[i] > earnings_values[i + 1] for i in range(len(earnings_values) - 1))
@@ -194,7 +229,7 @@ def analyze_consistency(financial_line_items: list) -> dict[str, any]:
         else:
             reasoning.append("Inconsistent earnings growth pattern")
 
-        # Calculate growth rate
+        # 计算增长率 - Calculate growth rate
         if len(earnings_values) >= 2:
             growth_rate = (earnings_values[0] - earnings_values[-1]) / abs(earnings_values[-1])
             reasoning.append(f"Total earnings growth of {growth_rate:.1%} over past {len(earnings_values)} periods")
@@ -208,14 +243,19 @@ def analyze_consistency(financial_line_items: list) -> dict[str, any]:
 
 
 def calculate_owner_earnings(financial_line_items: list) -> dict[str, any]:
-    """Calculate owner earnings (Buffett's preferred measure of true earnings power).
-    Owner Earnings = Net Income + Depreciation - Maintenance CapEx"""
+    """
+    计算所有者收益（巴菲特偏好的真实盈利能力衡量指标）
+    所有者收益 = 净收入 + 折旧 - 维护资本支出
+    
+    Calculate owner earnings (Buffett's preferred measure of true earnings power).
+    Owner Earnings = Net Income + Depreciation - Maintenance CapEx
+    """
     if not financial_line_items or len(financial_line_items) < 1:
         return {"owner_earnings": None, "details": ["Insufficient data for owner earnings calculation"]}
 
     latest = financial_line_items[0]
 
-    # Get required components
+    # 获取所需组件 - Get required components
     net_income = latest.net_income
     depreciation = latest.depreciation_and_amortization
     capex = latest.capital_expenditure
@@ -223,6 +263,7 @@ def calculate_owner_earnings(financial_line_items: list) -> dict[str, any]:
     if not all([net_income, depreciation, capex]):
         return {"owner_earnings": None, "details": ["Missing components for owner earnings calculation"]}
 
+    # 估算维护资本支出（通常是总资本支出的70-80%）
     # Estimate maintenance capex (typically 70-80% of total capex)
     maintenance_capex = capex * 0.75
 
@@ -236,38 +277,44 @@ def calculate_owner_earnings(financial_line_items: list) -> dict[str, any]:
 
 
 def calculate_intrinsic_value(financial_line_items: list) -> dict[str, any]:
-    """Calculate intrinsic value using DCF with owner earnings."""
+    """
+    使用基于所有者收益的DCF计算内在价值
+    采用巴菲特式的保守假设进行估值
+    
+    Calculate intrinsic value using DCF with owner earnings.
+    Uses conservative Buffett-style assumptions for valuation
+    """
     if not financial_line_items:
         return {"value": None, "details": ["Insufficient data for valuation"]}
 
-    # Calculate owner earnings
+    # 计算所有者收益 - Calculate owner earnings
     earnings_data = calculate_owner_earnings(financial_line_items)
     if not earnings_data["owner_earnings"]:
         return {"value": None, "details": earnings_data["details"]}
 
     owner_earnings = earnings_data["owner_earnings"]
 
-    # Get current market data
+    # 获取当前市场数据 - Get current market data
     latest_financial_line_items = financial_line_items[0]
     shares_outstanding = latest_financial_line_items.outstanding_shares
 
     if not shares_outstanding:
         return {"value": None, "details": ["Missing shares outstanding data"]}
 
-    # Buffett's DCF assumptions
-    growth_rate = 0.05  # Conservative 5% growth
-    discount_rate = 0.09  # Typical 9% discount rate
-    terminal_multiple = 12  # Conservative exit multiple
+    # 巴菲特的DCF假设 - Buffett's DCF assumptions
+    growth_rate = 0.05  # 保守的5%增长 - Conservative 5% growth
+    discount_rate = 0.09  # 典型的9%折现率 - Typical 9% discount rate
+    terminal_multiple = 12  # 保守的退出倍数 - Conservative exit multiple
     projection_years = 10
 
-    # Calculate future value
+    # 计算未来价值 - Calculate future value
     future_value = 0
     for year in range(1, projection_years + 1):
         future_earnings = owner_earnings * (1 + growth_rate) ** year
         present_value = future_earnings / (1 + discount_rate) ** year
         future_value += present_value
 
-    # Add terminal value
+    # 添加终值 - Add terminal value
     terminal_value = (owner_earnings * (1 + growth_rate) ** projection_years * terminal_multiple) / (1 + discount_rate) ** projection_years
     intrinsic_value = future_value + terminal_value
 
@@ -292,7 +339,10 @@ def generate_buffett_output(
     # model_name: str, # 已移除 (Removed)
     # model_provider: str, # 已移除 (Removed)
 ) -> WarrenBuffettSignal:
-    """Get investment decision from LLM with Buffett's principles"""
+    """
+    基于巴菲特原则从LLM获取投资决策
+    Get investment decision from LLM with Buffett's principles
+    """
     template = ChatPromptTemplate.from_messages(
         [
             (
@@ -313,8 +363,8 @@ def generate_buffett_output(
                 4. 最后以巴菲特式的评估方式对投资机会进行总结
                 5. 在解释中运用沃伦·巴菲特的语气和对话风格
 
-                例如，如果看涨：“我对[特定优势]印象特别深刻，这让我们想起了我们早期对喜诗糖果的投资，当时我们看到了[类似的属性]……”
-                例如，如果看跌：“资本回报率的下降让我想起了伯克希尔哈撒韦的纺织业务，我们最终退出了，因为……”
+                例如，如果看涨："我对[特定优势]印象特别深刻，这让我们想起了我们早期对喜诗糖果的投资，当时我们看到了[类似的属性]……"
+                例如，如果看跌："资本回报率的下降让我想起了伯克希尔哈撒韦的纺织业务，我们最终退出了，因为……"
 
                 请严格遵循这些准则。
                 """,
@@ -337,15 +387,17 @@ def generate_buffett_output(
         ]
     )
 
-    # Generate the prompt
+    # 生成提示 - Generate the prompt
     prompt = template.invoke({
         "analysis_data": json.dumps(analysis_data, indent=2), 
         "ticker": ticker
       })
 
+    # 创建WarrenBuffettSignal的默认工厂函数
     # Create default factory for WarrenBuffettSignal
     def create_default_warren_buffett_signal():
-        return WarrenBuffettSignal(signal="neutral", confidence=0.0, reasoning="Error in analysis, defaulting to neutral")
+        """创建默认的Warren Buffett信号 - Create default Warren Buffett signal"""
+        return WarrenBuffettSignal(signal="中性", confidence=0.0, reasoning="Error in analysis, defaulting to neutral")
 
     # 调用 call_llm 时不再传递 model_name 和 model_provider
     # model_name and model_provider are no longer passed when calling call_llm

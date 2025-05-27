@@ -9,8 +9,16 @@ from utils.llm import call_llm
 
 from tools.api import get_financial_metrics, get_market_cap, search_line_items, get_company_news, get_insider_trades
 
+"""
+Nancy Pelosi政策信息优势分析师代理 - 基于政策内部信息和国会交易模式
+Nancy Pelosi policy information advantage analyst agent - Based on policy insider information and congressional trading patterns
+"""
 
 class NancyPelosiSignal(BaseModel):
+    """
+    Nancy Pelosi分析信号模型 - 包含投资信号、置信度和推理
+    Nancy Pelosi analysis signal model - Contains investment signal, confidence and reasoning
+    """
     signal: Literal["bullish", "bearish", "neutral"]
     confidence: float
     reasoning: str
@@ -18,6 +26,13 @@ class NancyPelosiSignal(BaseModel):
 
 def nancy_pelosi_agent(state: AgentState):
     """
+    使用政策信息优势和国会交易模式分析股票：
+    1. 利用政策内部知识识别监管套利机会
+    2. 识别在立法或拨款中获得优待的行业
+    3. 分析与政府关系密切且有重大合同的公司
+    4. 在公开披露前识别信息不对称机会
+    5. 跟踪实际国会交易模式以确认投资信号
+    
     Analyzes stocks using policy information advantage and congressional trading patterns:
     1. Regulatory arbitrage opportunities from insider policy knowledge
     2. Sectors receiving preferential treatment in legislation or appropriations
@@ -29,24 +44,25 @@ def nancy_pelosi_agent(state: AgentState):
     end_date = data["end_date"]
     tickers = data["tickers"]
     
+    # 收集分析数据 - Collect analysis data
     analysis_data = {}
     pelosi_analysis = {}
     
     for ticker in tickers:
         progress.update_status("nancy_pelosi_agent", ticker, "Fetching financial metrics")
-        # Fetch required data
+        # 获取所需数据 - Fetch required data
         metrics = get_financial_metrics(ticker, end_date, period="annual", limit=5)
         
         progress.update_status("nancy_pelosi_agent", ticker, "Gathering financial line items")
         financial_line_items = search_line_items(
             ticker,
             [
-                "revenue", 
-                "net_income",
-                "outstanding_shares",
-                "total_assets",
-                "research_and_development",
-                "goodwill_and_intangible_assets",  # Often higher in gov contractors
+                "revenue",  # 收入
+                "net_income",  # 净收入
+                "outstanding_shares",  # 流通股数
+                "total_assets",  # 总资产
+                "research_and_development",  # 研发费用
+                "goodwill_and_intangible_assets",  # 商誉和无形资产 - 政府承包商通常较高
             ],
             end_date,
             period="annual",
@@ -57,47 +73,52 @@ def nancy_pelosi_agent(state: AgentState):
         market_cap = get_market_cap(ticker, end_date)
         
         progress.update_status("nancy_pelosi_agent", ticker, "Getting recent news")
-        # Analysis of recent news for policy/regulatory mentions
+        # 分析最近新闻中的政策/监管提及 - Analysis of recent news for policy/regulatory mentions
         company_news = get_company_news(ticker, end_date, limit=100)
         
         progress.update_status("nancy_pelosi_agent", ticker, "Fetching insider trading data")
-        # Get insider trading data to identify patterns
+        # 获取内部交易数据以识别模式 - Get insider trading data to identify patterns
         insider_trades = get_insider_trades(ticker, end_date, limit=100)
         
         progress.update_status("nancy_pelosi_agent", ticker, "Analyzing legislation impact")
+        # 分析立法影响 - Analyze legislation impact
         legislation_analysis = analyze_legislation_impact(company_news, ticker)
         
         progress.update_status("nancy_pelosi_agent", ticker, "Analyzing government contract potential")
+        # 分析政府合同潜力 - Analyze government contract potential
         gov_contract_analysis = analyze_government_contracts(financial_line_items, company_news)
         
         progress.update_status("nancy_pelosi_agent", ticker, "Analyzing policy trends")
+        # 分析政策趋势 - Analyze policy trends
         policy_analysis = analyze_policy_trends(company_news, ticker)
 
         progress.update_status("nancy_pelosi_agent", ticker, "Analyzing information asymmetry")
+        # 分析信息不对称 - Analyze information asymmetry
         asymmetry_analysis = analyze_information_asymmetry(company_news, insider_trades, ticker)
         
         progress.update_status("nancy_pelosi_agent", ticker, "Analyzing congressional trading patterns")
+        # 分析国会交易模式 - Analyze congressional trading patterns
         congressional_trading = analyze_congressional_trading(ticker, insider_trades, company_news)
         
-        # Calculate total score with higher weight on information asymmetry and congressional trading
+        # 计算总分，信息不对称和国会交易权重更高 - Calculate total score with higher weight on information asymmetry and congressional trading
         total_score = (
-            legislation_analysis["score"] * 0.2 + 
-            gov_contract_analysis["score"] * 0.2 + 
-            policy_analysis["score"] * 0.2 +
-            asymmetry_analysis["score"] * 0.2 +
-            congressional_trading["score"] * 0.2
+            legislation_analysis["score"] * 0.2 +  # 立法分析权重20% - Legislation analysis weight 20%
+            gov_contract_analysis["score"] * 0.2 +  # 政府合同分析权重20% - Government contract analysis weight 20%
+            policy_analysis["score"] * 0.2 +  # 政策分析权重20% - Policy analysis weight 20%
+            asymmetry_analysis["score"] * 0.2 +  # 信息不对称分析权重20% - Information asymmetry analysis weight 20%
+            congressional_trading["score"] * 0.2  # 国会交易分析权重20% - Congressional trading analysis weight 20%
         )
         max_possible_score = 10
         
-        # Generate trading signal
-        if total_score >= 0.65 * max_possible_score:  # Lower threshold - biased toward action
+        # 生成交易信号 - Generate trading signal
+        if total_score >= 0.65 * max_possible_score:  # 较低阈值 - 偏向于行动 - Lower threshold - biased toward action
             signal = "bullish"
         elif total_score <= 0.35 * max_possible_score:
             signal = "bearish"
         else:
             signal = "neutral"
         
-        # Combine all analysis results
+        # 整合所有分析结果 - Combine all analysis results
         analysis_data[ticker] = {
             "signal": signal,
             "score": total_score,
@@ -114,11 +135,9 @@ def nancy_pelosi_agent(state: AgentState):
         pelosi_output = generate_pelosi_output(
             ticker=ticker,
             analysis_data=analysis_data,
-            model_name=state["metadata"]["model_name"],
-            model_provider=state["metadata"]["model_provider"],
         )
         
-        # Store analysis in consistent format with other agents
+        # 以与其他代理一致的格式存储分析 - Store analysis in consistent format with other agents
         pelosi_analysis[ticker] = {
             "signal": pelosi_output.signal,
             "confidence": pelosi_output.confidence,
@@ -127,17 +146,17 @@ def nancy_pelosi_agent(state: AgentState):
         
         progress.update_status("nancy_pelosi_agent", ticker, "Done")
     
-    # Create the message
+    # 创建消息 - Create the message
     message = HumanMessage(
         content=json.dumps(pelosi_analysis),
         name="nancy_pelosi_agent"
     )
     
-    # Show reasoning if requested
+    # 如果请求，显示推理过程 - Show reasoning if requested
     if state["metadata"]["show_reasoning"]:
         show_agent_reasoning(pelosi_analysis, "Nancy Pelosi Agent")
     
-    # Add the signal to the analyst_signals list
+    # 将信号添加到analyst_signals列表 - Add the signal to the analyst_signals list
     state["data"]["analyst_signals"]["nancy_pelosi_agent"] = pelosi_analysis
     
     return {
@@ -148,6 +167,9 @@ def nancy_pelosi_agent(state: AgentState):
 
 def analyze_legislation_impact(company_news: list, ticker: str) -> dict:
     """
+    分析最近新闻中影响公司的政策或监管变化的提及。
+    专注于识别可能创造盈利机会的政策变化的预公开信息。
+    
     Analyze recent news for mentions of policy or regulatory changes affecting the company.
     Focus on identifying pre-public information about policy changes that could create profit opportunities.
     """
@@ -157,7 +179,7 @@ def analyze_legislation_impact(company_news: list, ticker: str) -> dict:
             "details": "No news data available for legislation analysis"
         }
     
-    # Keywords related to policy and legislation
+    # 与政策和立法相关的关键词 - Keywords related to policy and legislation
     legislation_keywords = [
         "bill", "act", "legislation", "congress", "senate", "house", "regulation", 
         "regulatory", "policy", "subsidies", "tax credit", "incentive", "stimulus",
@@ -166,22 +188,22 @@ def analyze_legislation_impact(company_news: list, ticker: str) -> dict:
         "earmark", "omnibus", "reconciliation"
     ]
     
-    # Score parameters
+    # 评分参数 - Score parameters
     score = 0
     relevant_news_count = 0
     positive_legislation_count = 0
     negative_legislation_count = 0
     details = []
     
-    # Legislation analysis
+    # 立法分析 - Legislation analysis
     for news in company_news:
         title_lower = news.title.lower()
         
-        # Check for legislation-related news
+        # 检查立法相关新闻 - Check for legislation-related news
         if any(keyword in title_lower for keyword in legislation_keywords):
             relevant_news_count += 1
             
-            # Score the sentiment for legislation impact
+            # 对立法影响的情感进行评分 - Score the sentiment for legislation impact
             sentiment = news.sentiment if hasattr(news, 'sentiment') and news.sentiment else "neutral"
             
             if sentiment == "positive":
@@ -193,7 +215,7 @@ def analyze_legislation_impact(company_news: list, ticker: str) -> dict:
                 score -= 1
                 details.append(f"Negative legislation impact: {news.title}")
     
-    # Additional score boost for significant legislative activity
+    # 重大立法活动的额外加分 - Additional score boost for significant legislative activity
     if relevant_news_count > 5:
         score += 1
         details.append(f"High legislative activity: {relevant_news_count} relevant news items")
@@ -226,6 +248,14 @@ def analyze_legislation_impact(company_news: list, ticker: str) -> dict:
 
 def analyze_government_contracts(financial_line_items: list, company_news: list) -> dict:
     """
+    分析公司获得政府合同的潜力。
+    
+    寻找：
+    1. 政府承包历史
+    2. 新闻中潜在合同的提及
+    3. 政府业务依赖的财务指标
+    4. 与关键政府采购官员的关系
+    
     Analyze company's potential for securing government contracts.
     
     Looks for:
@@ -237,7 +267,7 @@ def analyze_government_contracts(financial_line_items: list, company_news: list)
     score = 0
     details = []
     
-    # Contract-related news keywords
+    # 合同相关新闻关键词 - Contract-related news keywords
     contract_keywords = [
         "contract", "procurement", "award", "bid", "tender", "government deal", 
         "federal contract", "defense contract", "agency award", "government client",
@@ -245,7 +275,7 @@ def analyze_government_contracts(financial_line_items: list, company_news: list)
         "request for proposal", "RFP", "no-bid contract", "sole source"
     ]
     
-    # Check for contract-related news
+    # 检查合同相关新闻 - Check for contract-related news
     contract_news_count = 0
     if company_news:
         for news in company_news:
@@ -261,9 +291,9 @@ def analyze_government_contracts(financial_line_items: list, company_news: list)
         score += 1
         details.append(f"Some contract news: {contract_news_count} related items")
     
-    # Analyze financial data for government contract indicators
+    # 分析财务数据以寻找政府合同指标 - Analyze financial data for government contract indicators
     if financial_line_items and len(financial_line_items) > 0:
-        # High goodwill often indicates acquisitions of government contractors
+        # 高商誉通常表明收购了政府承包商 - High goodwill often indicates acquisitions of government contractors
         if hasattr(financial_line_items[0], 'goodwill_and_intangible_assets') and financial_line_items[0].goodwill_and_intangible_assets:
             goodwill_to_assets_ratio = financial_line_items[0].goodwill_and_intangible_assets / financial_line_items[0].total_assets if financial_line_items[0].total_assets else 0
             
@@ -271,7 +301,7 @@ def analyze_government_contracts(financial_line_items: list, company_news: list)
                 score += 1
                 details.append(f"High goodwill ratio ({goodwill_to_assets_ratio:.2f}) suggests acquisitions of contracted businesses")
         
-        # Stable revenue patterns often indicate long-term government contracts
+        # 稳定的收入模式通常表明长期政府合同 - Stable revenue patterns often indicate long-term government contracts
         revenues = [item.revenue for item in financial_line_items if hasattr(item, 'revenue') and item.revenue is not None]
         if len(revenues) >= 3:
             revenue_volatility = sum(abs((revenues[i] / revenues[i+1]) - 1) for i in range(len(revenues)-1)) / (len(revenues)-1) if all(r > 0 for r in revenues) else 1
@@ -283,7 +313,7 @@ def analyze_government_contracts(financial_line_items: list, company_news: list)
                 score += 1
                 details.append(f"Relatively stable revenue (volatility: {revenue_volatility:.2f}) suggests possible contract base")
     
-    # Connect contract potential to investment recommendation
+    # 将合同潜力与投资建议联系起来 - Connect contract potential to investment recommendation
     if score >= 4:
         details.append("Strong government contracting position represents significant profit opportunity")
     elif score >= 2:
@@ -297,6 +327,11 @@ def analyze_government_contracts(financial_line_items: list, company_news: list)
 
 def analyze_policy_trends(company_news: list, ticker: str) -> dict:
     """
+    分析可能影响公司前景的更广泛政策趋势
+    
+    检查行业范围内的政策变化、监管环境，
+    以及可能影响未来表现的政府优先事项。
+    
     Analyze broader policy trends that might affect the company's prospects
     
     Examines sector-wide policy changes, regulatory environments,
@@ -305,7 +340,7 @@ def analyze_policy_trends(company_news: list, ticker: str) -> dict:
     score = 0
     details = []
     
-    # Keywords for policy areas often subject to government action
+    # 经常受到政府行动影响的政策领域关键词 - Keywords for policy areas often subject to government action
     policy_areas = {
         'technology': ['tech', 'technology', 'software', 'data', 'privacy', 'cybersecurity', 'ai', 'artificial intelligence'],
         'healthcare': ['health', 'medical', 'medicare', 'medicaid', 'affordable care', 'pharma', 'drug', 'vaccine'],
@@ -315,7 +350,7 @@ def analyze_policy_trends(company_news: list, ticker: str) -> dict:
         'defense': ['defense', 'military', 'security', 'weapons', 'contractor', 'army', 'navy', 'air force']
     }
     
-    # Count news by policy area
+    # 按政策领域统计新闻 - Count news by policy area
     policy_area_counts = {area: 0 for area in policy_areas}
     trending_policy_areas = []
     
@@ -326,7 +361,7 @@ def analyze_policy_trends(company_news: list, ticker: str) -> dict:
             if any(keyword in title_lower for keyword in keywords):
                 policy_area_counts[area] += 1
     
-    # Identify trending policy areas (areas with significant news coverage)
+    # 识别趋势政策领域（新闻覆盖率显著的领域）- Identify trending policy areas (areas with significant news coverage)
     for area, count in policy_area_counts.items():
         if count > 5:
             trending_policy_areas.append(area)
@@ -337,13 +372,13 @@ def analyze_policy_trends(company_news: list, ticker: str) -> dict:
             score += 0.5
             details.append(f"Some {area} policy activity: {count} news items - worth monitoring closely")
     
-    # Additional score for sectors with current legislative momentum
+    # 当前具有立法动力的行业的额外评分 - Additional score for sectors with current legislative momentum
     priority_sectors = ['infrastructure', 'technology', 'healthcare', 'energy']
     if any(area in priority_sectors for area in trending_policy_areas):
         score += 2
         details.append(f"Company in high-priority policy sectors: {[area for area in trending_policy_areas if area in priority_sectors]} - favorable positioning")
     
-    # Analysis of policy implications
+    # 政策影响分析 - Analysis of policy implications
     if len(trending_policy_areas) > 1:
         score += 1
         details.append(f"Multiple policy areas ({', '.join(trending_policy_areas)}) create cross-sector opportunities")
@@ -362,6 +397,11 @@ def analyze_policy_trends(company_news: list, ticker: str) -> dict:
 
 def analyze_information_asymmetry(company_news: list, insider_trades: list, ticker: str) -> dict:
     """
+    基于政策知识分析信息不对称机会。
+    寻找表明潜在政策驱动信息优势的模式。
+    
+    这识别了政策知识在公开市场意识之前创造交易优势的机会。
+    
     Analyze information asymmetry opportunities based on policy knowledge.
     Looks for patterns indicating potential policy-driven information advantage.
     
@@ -371,7 +411,7 @@ def analyze_information_asymmetry(company_news: list, insider_trades: list, tick
     score = 0
     details = []
     
-    # Key terms indicating potential information asymmetry
+    # 表明潜在信息不对称的关键术语 - Key terms indicating potential information asymmetry
     asymmetry_keywords = [
         "upcoming announcement", "pending approval", "not yet public", "confidential", 
         "internal documents", "sources familiar", "expected to announce", "advance notice",
@@ -484,7 +524,7 @@ def analyze_congressional_trading(ticker: str, insider_trades: list, company_new
                 score -= 2
                 details.append(f"Strong insider selling pattern: {(1-buy_ratio):.0%} sells - indicates negative information advantage")
     
-    # Check for specific sectors with high congressional trading activity
+    # 检查具有高国会交易活动的特定行业 - Check for specific sectors with high congressional trading activity
     congress_heavy_sectors = {
         "tech": ["AAPL", "MSFT", "GOOG", "GOOGL", "META", "AMZN", "NVDA"],
         "pharma": ["PFE", "JNJ", "MRK", "ABBV", "LLY"],
@@ -499,7 +539,7 @@ def analyze_congressional_trading(ticker: str, insider_trades: list, company_new
             details.append(f"Company in {sector} sector with high congressional trading activity")
             break
     
-    # Finally, check known historically high congressional trading stocks
+    # 最后，检查已知历史上国会交易频繁的股票 - Finally, check known historically high congressional trading stocks
     high_trading_stocks = ["AAPL", "MSFT", "AMZN", "GOOGL", "TSLA", "NVDA", "PFE", "JNJ"]
     if ticker in high_trading_stocks:
         score += 2
@@ -519,7 +559,10 @@ def generate_pelosi_output(
     # model_name: str, # 已移除 (Removed)
     # model_provider: str, # 已移除 (Removed)
 ) -> NancyPelosiSignal:
-    """Generate congressional trading style investment decision from LLM."""
+    """
+    基于国会交易风格生成投资决策
+    Generate congressional trading style investment decision from LLM.
+    """
     template = ChatPromptTemplate.from_messages([
         (
             "system",
@@ -558,13 +601,13 @@ def generate_pelosi_output(
         )
     ])
 
-    # Generate the prompt
+    # 生成提示 - Generate the prompt
     prompt = template.invoke({
         "analysis_data": json.dumps(analysis_data, indent=2),
         "ticker": ticker
     })
 
-    # Create default factory for NancyPelosiSignal
+    # 为NancyPelosiSignal创建默认工厂 - Create default factory for NancyPelosiSignal
     def create_default_signal():
         return NancyPelosiSignal(signal="neutral", confidence=0.0, reasoning="Error in analysis, defaulting to neutral")
 

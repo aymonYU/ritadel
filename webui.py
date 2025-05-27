@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+"""
+Web UI 主程序 - 提供网页界面用于运行AI对冲基金分析系统
+Main Web UI program - Provides web interface for running AI hedge fund analysis system
+"""
 import os
 import sys
 import subprocess
@@ -20,15 +24,18 @@ import contextlib
 import builtins  # Add this import at the top of the file
 from colorama import Fore, Style, init
 
+# 从.env文件加载环境变量
 # Load environment variables from .env file
 load_dotenv()
 
+# 配置常量
 # Configuration
 WEBUI_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "webui")
 DEFAULT_PORT = 3000
 DEFAULT_HOST = "127.0.0.1"
 API_PORT = 5000
 
+# 将src目录添加到Python路径
 # Add src directory to Python path
 SRC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "src")
 sys.path.append(SRC_DIR)
@@ -42,10 +49,15 @@ import traceback
 # right after your imports and before functions that use it
 # (around line 40 after the imports and before start_api_server)
 
+# 全局WebSocket客户端列表
 # Add a global function for server-wide logging to websocket clients
 websocket_clients = []
 
 def broadcast_log(message, level="info"):
+    """
+    广播日志消息到所有WebSocket客户端
+    Broadcast log message to all WebSocket clients
+    """
     # Send to WebSocket clients
     log_data = {"level": level, "message": message}
     for client in websocket_clients[:]:
@@ -54,12 +66,21 @@ def broadcast_log(message, level="info"):
         except Exception:
             websocket_clients.remove(client)
 
+# 创建自定义进度处理器，将消息转发到websocket
 # Create a custom progress handler that forwards to websocket
 class WebUIProgressHandler:
+    """
+    Web UI进度处理器 - 处理分析过程中的状态更新
+    Web UI progress handler - Handles status updates during analysis process
+    """
     def __init__(self):
         pass
         
     def update_status(self, agent, ticker, status):
+        """
+        更新分析状态并广播给客户端
+        Update analysis status and broadcast to clients
+        """
         # Format the status message
         if ticker:
             message = f"[{agent}] {ticker}: {status}"
@@ -70,17 +91,28 @@ class WebUIProgressHandler:
         broadcast_log(message, "info")
         
     def start(self):
+        """开始分析过程 - Start analysis process"""
         broadcast_log("Starting analysis process", "info")
         
     def complete(self):
+        """完成分析过程 - Complete analysis process"""
         broadcast_log("Analysis process completed", "success")
 
+# 捕获所有Python输出的详细日志记录器
 # Class to capture all Python output including LLM responses
 class VerboseLogger:
+    """
+    详细日志记录器 - 捕获函数执行过程中的所有输出
+    Verbose logger - Captures all output during function execution
+    """
     def __init__(self, original_func):
         self.original_func = original_func
     
     def __call__(self, *args, **kwargs):
+        """
+        包装函数调用，捕获并记录所有输出
+        Wrap function call to capture and log all output
+        """
         # Log the start of the function
         broadcast_log(f"Starting {self.original_func.__name__} with args: {args}", "info")
         
@@ -129,13 +161,19 @@ class VerboseLogger:
             sys.stdout = original_stdout
             sys.stderr = original_stderr
 
+# 输出分流器类 - 同时输出到原始流和缓冲区
 # Class to tee output to both original stream and buffer
 class StdoutTee:
+    """
+    标准输出分流器 - 将输出同时发送到原始流和缓冲区
+    Standard output tee - Sends output to both original stream and buffer
+    """
     def __init__(self, original_stream, buffer):
         self.original_stream = original_stream
         self.buffer = buffer
     
     def write(self, text):
+        """写入文本到两个输出流 - Write text to both output streams"""
         self.original_stream.write(text)
         self.buffer.write(text)
         
@@ -144,11 +182,17 @@ class StdoutTee:
             broadcast_log(text.strip(), "info")
     
     def flush(self):
+        """刷新输出流 - Flush output streams"""
         self.original_stream.flush()
         self.buffer.flush()
 
+# 复制.env文件到webui目录以供Next.js访问
 # Copy .env file to webui directory for Next.js to access via env vars
 def copy_env_file():
+    """
+    复制环境配置文件到Web UI目录
+    Copy environment configuration file to Web UI directory
+    """
     src_env = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
     webui_env = os.path.join(WEBUI_DIR, ".env")
     if os.path.exists(src_env):
@@ -157,8 +201,13 @@ def copy_env_file():
     else:
         print("Warning: .env file not found in project root")
 
+# API服务器实现
 # API server implementation
 def start_api_server(host=DEFAULT_HOST, port=API_PORT):
+    """
+    启动API服务器 - 提供后端API接口
+    Start API server - Provides backend API endpoints
+    """
     # Try importing the main hedge fund modules
     try:
         from src.main import run_hedge_fund
@@ -177,17 +226,24 @@ def start_api_server(host=DEFAULT_HOST, port=API_PORT):
     CORS(app, resources={r"/*": {"origins": "*"}})  # Allow requests from any origin
     sock = Sock(app)
 
+    # 控制台输出队列
     # Queue for console output
     console_queue = queue.Queue()
 
+    # 控制台输出捕获器
     # Capture stdout/stderr
     class ConsoleCapture:
+        """
+        控制台输出捕获器 - 捕获并转发控制台输出到队列
+        Console output capturer - Captures and forwards console output to queue
+        """
         def __init__(self):
             self.stdout = sys.stdout
             self.stderr = sys.stderr
             self.output = io.StringIO()
             
         def write(self, text):
+            """写入文本并发送到队列 - Write text and send to queue"""
             self.stdout.write(text)
             self.output.write(text)
             if text.strip():  # Only send non-empty lines
@@ -197,8 +253,8 @@ def start_api_server(host=DEFAULT_HOST, port=API_PORT):
                 })
         
         def flush(self):
+            """刷新输出流 - Flush output streams"""
             self.stdout.flush()
-            self.output.flush()
 
     # Redirect stdout/stderr to our capture
     sys.stdout = ConsoleCapture()
@@ -211,7 +267,10 @@ def start_api_server(host=DEFAULT_HOST, port=API_PORT):
     # API endpoints
     @app.route('/api/models', methods=['GET'])
     def get_models():
-        """Return available LLM models"""
+        """
+        获取可用的LLM模型列表
+        Return available LLM models
+        """
         # 由于模型固定为 GPT-4o，直接返回该模型的信息
         # As the model is fixed to GPT-4o, directly return its information.
         hardcoded_llm_order = [("[openai] gpt-4o", "gpt-4o", "OpenAI")]
@@ -221,14 +280,20 @@ def start_api_server(host=DEFAULT_HOST, port=API_PORT):
 
     @app.route('/api/analysts', methods=['GET'])
     def get_analysts():
-        """Return available analyst agents"""
+        """
+        获取可用的分析师代理列表
+        Return available analyst agents
+        """
         return jsonify({
             "analysts": ANALYST_ORDER
         })
 
     @app.route('/api/analysis', methods=['POST'])
     def run_analysis():
-        """Run hedge fund analysis"""
+        """
+        运行对冲基金分析
+        Run hedge fund analysis
+        """
         try:
             print("Received analysis request")
             data = request.get_json()
@@ -263,7 +328,7 @@ def start_api_server(host=DEFAULT_HOST, port=API_PORT):
                 broadcast_log(f"Error in real analysis: {str(e)}", "error")
                 broadcast_log(traceback.format_exc(), "error")
                 
-                # Create fallback results
+                # 创建备用结果 - Create fallback results
                 result = {
                     "ticker_analyses": {},
                     "portfolio": {"cash": data.get('initialCash', 100000), "positions": {}}
@@ -305,7 +370,10 @@ def start_api_server(host=DEFAULT_HOST, port=API_PORT):
 
     @app.route('/api/backtest', methods=['POST'])
     def run_backtest():
-        """Run backtesting on historical data"""
+        """
+        运行历史数据回测
+        Run backtesting on historical data
+        """
         try:
             data = request.get_json()
             tickers = data.get('tickers', '').split(',')
@@ -317,7 +385,7 @@ def start_api_server(host=DEFAULT_HOST, port=API_PORT):
             margin_requirement = data.get('marginRequirement', 0.5)
             is_crypto = data.get('isCrypto', False)
             
-            # Handle optional dates
+            # 处理可选日期 - Handle optional dates
             from datetime import datetime, timedelta
             
             # Default end_date to today if not provided
@@ -336,7 +404,7 @@ def start_api_server(host=DEFAULT_HOST, port=API_PORT):
             # model_info = get_model_info(model_name)
             model_provider = "OpenAI" # model_info.provider.value if model_info else "Unknown"
             
-            # Run backtest
+            # 运行回测 - Run backtest
             # Backtester 实例化时不再传递 model_name 和 model_provider
             # model_name and model_provider are no longer passed when instantiating Backtester
             backtester = Backtester(

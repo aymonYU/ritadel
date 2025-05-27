@@ -1,3 +1,7 @@
+"""
+主程序模块 - 对冲基金AI分析系统的核心逻辑
+Main module - Core logic for the AI hedge fund analysis system
+"""
 import sys
 
 from dotenv import load_dotenv
@@ -30,6 +34,7 @@ from tabulate import tabulate
 from utils.visualize import save_graph_as_png
 import json
 
+# 从.env文件加载环境变量
 # Load environment variables from .env file
 load_dotenv()
 
@@ -37,6 +42,10 @@ init(autoreset=True)
 
 
 def parse_hedge_fund_response(response):
+    """
+    解析对冲基金响应 - 将响应转换为JSON格式
+    Parse hedge fund response - Convert response to JSON format
+    """
     import json
 
     try:
@@ -46,6 +55,7 @@ def parse_hedge_fund_response(response):
         return None
 
 
+##### 运行对冲基金系统 #####
 ##### Run the Hedge Fund #####
 def run_hedge_fund(
     tickers: list[str],
@@ -55,10 +65,23 @@ def run_hedge_fund(
     show_reasoning: bool = False,
     selected_analysts: list[str] = [],
 ):
+    """
+    运行对冲基金分析系统的主函数
+    Main function to run the hedge fund analysis system
+    
+    Args:
+        tickers: 股票代码列表 - List of stock tickers
+        start_date: 开始日期 - Start date  
+        end_date: 结束日期 - End date
+        portfolio: 投资组合信息 - Portfolio information
+        show_reasoning: 是否显示推理过程 - Whether to show reasoning
+        selected_analysts: 选择的分析师列表 - List of selected analysts
+    """
     # Start progress tracking
     progress.start()
 
     try:
+        # 使用指定的分析师创建新的工作流
         # Create a new workflow with the specified analysts
         workflow = create_workflow(selected_analysts)
         
@@ -67,7 +90,7 @@ def run_hedge_fund(
         
         app = workflow.compile()
 
-        # Create the initial state
+        # 创建初始状态 - Create the initial state
         initial_state = {
             "messages": [],
             "data": {
@@ -84,13 +107,13 @@ def run_hedge_fund(
             },
         }
 
-        # Run the workflow
+        # 运行工作流 - Run the workflow
         result = app.invoke(initial_state)
         
         # Stop progress tracking
         progress.stop()
 
-        # Extract the portfolio decisions
+        # 提取投资组合决策 - Extract the portfolio decisions
         if "portfolio_decision" in result["data"]:
             portfolio_decision = result["data"]["portfolio_decision"]
         else:
@@ -121,26 +144,33 @@ def run_hedge_fund(
 
 
 def start(state: AgentState):
-    """Initialize the workflow with the input message."""
+    """
+    初始化工作流的输入消息
+    Initialize the workflow with the input message.
+    """
     return state
 
 
 def create_workflow(selected_analysts=None):
-    """Create the workflow with selected analysts."""
+    """
+    创建带有选定分析师的工作流
+    Create the workflow with selected analysts.
+    """
     workflow = StateGraph(AgentState)
     workflow.add_node("start_node", start)
 
-    # Get analyst nodes from the configuration
+    # 从配置中获取分析师节点 - Get analyst nodes from the configuration
     analyst_nodes = get_analyst_nodes()
     
     print(f"\n{Fore.YELLOW}Creating workflow with analysts: {selected_analysts}{Style.RESET_ALL}")
     
+    # 如果没有选择分析师，默认使用所有分析师
     # Default to all analysts if none selected
     if selected_analysts is None:
         selected_analysts = list(analyst_nodes.keys())
         print(f"{Fore.RED}No analysts specified, defaulting to all: {selected_analysts}{Style.RESET_ALL}")
     
-    # Add all selected analyst nodes
+    # 添加所有选定的分析师节点 - Add all selected analyst nodes
     for analyst_key in selected_analysts:
         if analyst_key in analyst_nodes:
             node_name, node_func = analyst_nodes[analyst_key]
@@ -149,17 +179,17 @@ def create_workflow(selected_analysts=None):
         else:
             print(f"{Fore.RED}Warning: Analyst {analyst_key} not found in configuration{Style.RESET_ALL}")
     
-    # Always add risk and portfolio management
+    # 始终添加风险管理和投资组合管理 - Always add risk and portfolio management
     workflow.add_node("risk_management_agent", risk_management_agent)
     workflow.add_node("portfolio_management_agent", portfolio_management_agent)
     
-    # Connect all analysts to risk management
+    # 将所有分析师连接到风险管理 - Connect all analysts to risk management
     for analyst_key in selected_analysts:
         if analyst_key in analyst_nodes:
             node_name = analyst_nodes[analyst_key][0]
             workflow.add_edge(node_name, "risk_management_agent")
     
-    # Connect risk management to portfolio management
+    # 将风险管理连接到投资组合管理 - Connect risk management to portfolio management
     workflow.add_edge("risk_management_agent", "portfolio_management_agent")
     workflow.add_edge("portfolio_management_agent", END)
 
@@ -170,9 +200,11 @@ def create_workflow(selected_analysts=None):
 # 移除了 is_crypto, model_name, model_provider 参数 (Removed is_crypto, model_name, model_provider parameters)
 def run_all_analysts_with_round_table(tickers, start_date, end_date, portfolio, show_reasoning):
     """
+    运行所有可用分析师并进行圆桌讨论
     Run all available analysts and then conduct a round table discussion without user selection.
     This is a simplified workflow for when the user specifies the --round-table flag.
     """
+    # 获取所有可用的分析师键（除了我们要移除的master）
     # Get all available analyst keys (except master which we're removing)
     analyst_nodes = get_analyst_nodes()
     all_analysts = [key for key in analyst_nodes.keys() if key != "master"]
@@ -182,6 +214,7 @@ def run_all_analysts_with_round_table(tickers, start_date, end_date, portfolio, 
         print(f"  {analyst_nodes[analyst][0].replace('_agent', '').replace('_', ' ').title()}")
     print("")  # Empty line for spacing
     
+    # 运行包含所有分析师的常规对冲基金分析
     # Run the regular hedge fund with all analysts
     # 调用 run_hedge_fund 时不再传递 model_name 和 model_provider
     # model_name and model_provider are no longer passed when calling run_hedge_fund
@@ -194,7 +227,7 @@ def run_all_analysts_with_round_table(tickers, start_date, end_date, portfolio, 
         selected_analysts=all_analysts,
     )
     
-    # Run the round table discussion
+    # 运行圆桌讨论 - Run the round table discussion
     # 调用 run_round_table 时不再传递 model_name 和 model_provider
     # model_name and model_provider are no longer passed when calling run_round_table
     from round_table import run_round_table # 确保此导入在文件顶部 (Ensure this import is at the top of the file)
