@@ -58,11 +58,13 @@ def run_round_table(data, model_name, model_provider, show_reasoning=True):
         progress.update_status("round_table", ticker, f"Simulating discussion with {len(ticker_signals)} analysts")
         
         # Simulate the round table discussion
+        # 调用 simulate_round_table 时不再传递 model_name 和 model_provider
+        # model_name and model_provider are no longer passed when calling simulate_round_table
         round_table_output = simulate_round_table(
             ticker=ticker,
             ticker_signals=ticker_signals,
-            model_name=model_name,
-            model_provider=model_provider,
+            # model_name=model_name, # 已移除 (Removed)
+            # model_provider=model_provider, # 已移除 (Removed)
         )
         
         # Store analysis

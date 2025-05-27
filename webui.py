@@ -163,7 +163,9 @@ def start_api_server(host=DEFAULT_HOST, port=API_PORT):
     try:
         from src.main import run_hedge_fund
         from src.backtester import Backtester
-        from src.llm.models import LLM_ORDER, get_model_info
+        # 移除了 LLM_ORDER 和 get_model_info 的导入，因为模型固定为 GPT-4o
+        # Removed import of LLM_ORDER and get_model_info as the model is fixed to GPT-4o
+        # from src.llm.models import LLM_ORDER, get_model_info 
         from src.utils.analysts import ANALYST_ORDER
         # Import any other modules you need
     except ImportError as e:
@@ -210,8 +212,11 @@ def start_api_server(host=DEFAULT_HOST, port=API_PORT):
     @app.route('/api/models', methods=['GET'])
     def get_models():
         """Return available LLM models"""
+        # 由于模型固定为 GPT-4o，直接返回该模型的信息
+        # As the model is fixed to GPT-4o, directly return its information.
+        hardcoded_llm_order = [("[openai] gpt-4o", "gpt-4o", "OpenAI")]
         return jsonify({
-            "models": LLM_ORDER
+            "models": hardcoded_llm_order
         })
 
     @app.route('/api/analysts', methods=['GET'])
@@ -327,22 +332,25 @@ def start_api_server(host=DEFAULT_HOST, port=API_PORT):
                 start_date_obj = end_date_obj - timedelta(days=90)  # 3 months
                 start_date = start_date_obj.strftime('%Y-%m-%d')
             
-            # Get model provider
-            model_info = get_model_info(model_name)
-            model_provider = model_info.provider.value if model_info else "Unknown"
+            # 移除了 get_model_info 的调用，model_provider 固定为 OpenAI
+            # Removed call to get_model_info, model_provider is fixed to OpenAI.
+            # model_info = get_model_info(model_name)
+            model_provider = "OpenAI" # model_info.provider.value if model_info else "Unknown"
             
             # Run backtest
+            # Backtester 实例化时不再传递 model_name 和 model_provider
+            # model_name and model_provider are no longer passed when instantiating Backtester
             backtester = Backtester(
                 agent=run_hedge_fund,
                 tickers=tickers,
                 start_date=start_date,
                 end_date=end_date,
                 initial_capital=initial_capital,
-                model_name=model_name,
-                model_provider=model_provider,
+                # model_name=model_name, # 已移除 (Removed)
+                # model_provider=model_provider, # 已移除 (Removed)
                 selected_analysts=selected_analysts,
                 initial_margin_requirement=margin_requirement,
-                is_crypto=is_crypto
+                # is_crypto=is_crypto # is_crypto 已在 Backtester 中移除 (is_crypto removed in Backtester)
             )
             
             performance_metrics = backtester.run_backtest()
@@ -368,12 +376,13 @@ def start_api_server(host=DEFAULT_HOST, port=API_PORT):
             
             data = request.get_json()
             ticker = data.get('ticker')
-            model_name = data.get('modelName')
+            model_name = data.get('modelName') # model_name 仍然可以从请求中获取，但主要用于显示或记录，而非选择模型 (model_name can still be fetched from request, but mainly for display/logging, not model selection)
             selected_personas = data.get('selectedPersonas', [])
             
-            # Get model provider
-            model_info = get_model_info(model_name)
-            model_provider = model_info.provider.value if model_info else "Unknown"
+            # 移除了 get_model_info 的调用，model_provider 固定为 OpenAI
+            # Removed call to get_model_info, model_provider is fixed to OpenAI.
+            # model_info = get_model_info(model_name)
+            model_provider = "OpenAI" # model_info.provider.value if model_info else "Unknown"
             
             # Setup analysis data structure for round table
             analysis_data = {
@@ -382,10 +391,12 @@ def start_api_server(host=DEFAULT_HOST, port=API_PORT):
             }
             
             # Run round table
+            # 调用 run_round_table 时不再传递 model_name 和 model_provider
+            # model_name and model_provider are no longer passed when calling run_round_table
             result = run_round_table(
                 data=analysis_data, 
-                model_name=model_name,
-                model_provider=model_provider,
+                # model_name=model_name, # 已移除 (Removed)
+                # model_provider=model_provider, # 已移除 (Removed)
                 show_reasoning=True
             )
             
@@ -731,9 +742,10 @@ def run_hedge_fund_for_web(tickers, selected_analysts, model_name, start_date=No
     This bypasses some of the CLI-specific code and analyst selection logic.
     """
     # Import necessary modules
-    from src.main import create_workflow
-    from src.graph.state import AgentState, show_agent_reasoning
-    from src.llm.models import get_model_info
+    from src.main import create_workflow # create_workflow 可能不再需要，如果直接调用 run_hedge_fund (create_workflow might not be needed if run_hedge_fund is called directly)
+    from src.graph.state import AgentState, show_agent_reasoning # show_agent_reasoning 可能不再需要 (show_agent_reasoning might not be needed)
+    # 移除了 get_model_info 的导入 (Removed import of get_model_info)
+    # from src.llm.models import get_model_info 
     init(autoreset=True)  # Initialize colorama
     
     # Import progress tracker from the correct location
@@ -751,10 +763,12 @@ def run_hedge_fund_for_web(tickers, selected_analysts, model_name, start_date=No
         
     broadcast_log("Starting analysis process", "info")
     
-    # Get model info
-    model_info = get_model_info(model_name)
-    model_provider = model_info.provider.value if model_info else "Unknown"
-    broadcast_log(f"Using model: {model_name} ({model_provider})", "info")
+    # 移除了 get_model_info 的调用，model_provider 固定为 OpenAI
+    # Removed call to get_model_info, model_provider is fixed to OpenAI.
+    # model_info = get_model_info(model_name)
+    model_provider = "OpenAI" # model_info.provider.value if model_info else "Unknown"
+    # model_name 来自函数参数，这里主要用于日志记录 (model_name comes from function parameter, mainly for logging here)
+    broadcast_log(f"Using model: {model_name} ({model_provider})", "info") 
     
     # Create portfolio
     portfolio = {
@@ -773,12 +787,12 @@ def run_hedge_fund_for_web(tickers, selected_analysts, model_name, start_date=No
             "start_date": start_date if start_date else (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d"),
             "end_date": end_date if end_date else datetime.now().strftime("%Y-%m-%d"),
             "analyst_signals": {},
-            "is_crypto": is_crypto
+            # "is_crypto": is_crypto # is_crypto 已移除 (is_crypto removed)
         },
         "metadata": {
             "show_reasoning": True,
-            "model_name": model_name,
-            "model_provider": model_provider
+            "model_name": model_name, # 用于元数据 (For metadata)
+            "model_provider": model_provider # 用于元数据 (For metadata)
         }
     }
     

@@ -7,55 +7,60 @@ from utils.progress import progress
 
 T = TypeVar('T', bound=BaseModel)
 
+# 移除了 model_name 和 model_provider 参数，因为模型固定为 GPT-4o
+# Removed model_name and model_provider parameters as the model is fixed to GPT-4o
 def call_llm(
     prompt: Any,
-    model_name: str,
-    model_provider: str,
     pydantic_model: Type[T],
     agent_name: Optional[str] = None,
     max_retries: int = 3,
     default_factory = None
 ) -> T:
     """
-    Makes an LLM call with retry logic, handling both Deepseek and non-Deepseek models.
+    Makes an LLM call with retry logic. Output is structured using the provided Pydantic model.
+    模型调用函数，包含重试逻辑。输出将使用指定的 Pydantic 模型进行结构化。
     
     Args:
-        prompt: The prompt to send to the LLM
-        model_name: Name of the model to use
-        model_provider: Provider of the model
-        pydantic_model: The Pydantic model class to structure the output
-        agent_name: Optional name of the agent for progress updates
-        max_retries: Maximum number of retries (default: 3)
-        default_factory: Optional factory function to create default response on failure
+        prompt: The prompt to send to the LLM (要发送给 LLM 的提示)
+        # model_name: Name of the model to use (不再需要)
+        # model_provider: Provider of the model (不再需要)
+        pydantic_model: The Pydantic model class to structure the output (用于结构化输出的 Pydantic 模型类)
+        agent_name: Optional name of the agent for progress updates (用于进度更新的可选代理名称)
+        max_retries: Maximum number of retries (default: 3) (最大重试次数，默认为 3)
+        default_factory: Optional factory function to create default response on failure (可选的默认响应工厂函数，在失败时使用)
         
     Returns:
-        An instance of the specified Pydantic model
+        An instance of the specified Pydantic model (指定 Pydantic 模型的实例)
     """
-    from llm.models import get_model, get_model_info
+    # 移除了 get_model_info 的导入和使用，因为模型已固定
+    # Removed import and usage of get_model_info as the model is fixed
+    from llm.models import get_model
     
-    model_info = get_model_info(model_name)
-    llm = get_model(model_name, model_provider)
+    # 调用 get_model 时不再需要参数，它将始终返回 GPT-4o 实例
+    # No parameters needed when calling get_model, it will always return a GPT-4o instance
+    llm = get_model() 
     
-    # For non-Deepseek models, we can use structured output
-    if not (model_info and model_info.is_deepseek()):
-        llm = llm.with_structured_output(
-            pydantic_model,
-            method="json_mode",
-        )
+    # 由于模型固定为 GPT-4o (非 Deepseek)，我们总是使用结构化输出
+    # As the model is fixed to GPT-4o (not Deepseek), we always use structured output
+    llm = llm.with_structured_output(
+        pydantic_model,
+        method="json_mode",
+    )
     
-    # Call the LLM with retries
+    # Call the LLM with retries (带重试逻辑调用 LLM)
     for attempt in range(max_retries):
         try:
-            # Call the LLM
+            # Call the LLM (调用 LLM)
             result = llm.invoke(prompt)
             
-            # For Deepseek, we need to extract and parse the JSON manually
-            if model_info and model_info.is_deepseek():
-                parsed_result = extract_json_from_deepseek_response(result.content)
-                if parsed_result:
-                    return pydantic_model(**parsed_result)
-            else:
-                return result
+            # 移除了 Deepseek 特定的 JSON 解析逻辑，因为不再支持 Deepseek 模型
+            # Removed Deepseek-specific JSON parsing logic as Deepseek models are no longer supported
+            # if model_info and model_info.is_deepseek():
+            #     parsed_result = extract_json_from_deepseek_response(result.content)
+            #     if parsed_result:
+            #         return pydantic_model(**parsed_result)
+            # else:
+            return result # 直接返回结构化输出结果 (Directly return the structured output result)
                 
         except Exception as e:
             if agent_name:

@@ -311,11 +311,13 @@ def analyze_valuation_graham(metrics: list, financial_line_items: list, market_c
     return {"score": score, "details": "; ".join(details)}
 
 
+# 移除了 model_name 和 model_provider 参数，因为模型固定为 GPT-4o
+# Removed model_name and model_provider parameters as the model is fixed to GPT-4o
 def generate_graham_output(
     ticker: str,
     analysis_data: dict[str, any],
-    model_name: str,
-    model_provider: str,
+    # model_name: str, # 已移除 (Removed)
+    # model_provider: str, # 已移除 (Removed)
 ) -> BenGrahamSignal:
     """
     Generates an investment decision in the style of Benjamin Graham:
@@ -361,10 +363,12 @@ def generate_graham_output(
     def create_default_ben_graham_signal():
         return BenGrahamSignal(signal="neutral", confidence=0.0, reasoning="Error in generating analysis; defaulting to neutral.")
 
+    # 调用 call_llm 时不再传递 model_name 和 model_provider
+    # model_name and model_provider are no longer passed when calling call_llm
     return call_llm(
         prompt=prompt,
-        model_name=model_name,
-        model_provider=model_provider,
+        # model_name=model_name, # 已移除 (Removed)
+        # model_provider=model_provider, # 已移除 (Removed)
         pydantic_model=BenGrahamSignal,
         agent_name="ben_graham_agent",
         default_factory=create_default_ben_graham_signal,

@@ -18,7 +18,9 @@ from agents.valuation import valuation_agent
 from utils.display import print_trading_output
 from utils.analysts import ANALYST_ORDER, get_analyst_nodes
 from utils.progress import progress
-from llm.models import LLM_ORDER, get_model_info
+# 移除了 LLM_ORDER 和 get_model_info 的导入，因为模型固定为 GPT-4o
+# Removed import of LLM_ORDER and get_model_info as the model is fixed to GPT-4o
+# from llm.models import LLM_ORDER, get_model_info
 from agents.round_table import round_table
 
 import argparse
@@ -52,8 +54,10 @@ def run_hedge_fund(
     portfolio: dict,
     show_reasoning: bool = False,
     selected_analysts: list[str] = [],
-    model_name: str = "gpt-4o",
-    model_provider: str = "OpenAI",
+    # 移除了 model_name 和 model_provider 参数，因为模型固定为 GPT-4o
+    # Removed model_name and model_provider parameters as the model is fixed to GPT-4o
+    # model_name: str = "gpt-4o", 
+    # model_provider: str = "OpenAI",
     # is_crypto: bool = False, # 移除了 is_crypto 参数，因为不再支持加密货币 (Removed is_crypto parameter as cryptocurrency is no longer supported)
 ):
     # Start progress tracking
@@ -81,8 +85,10 @@ def run_hedge_fund(
             },
             "metadata": {
                 "show_reasoning": show_reasoning,
-                "model_name": model_name,
-                "model_provider": model_provider,
+                # model_name 和 model_provider 现在从 llm.models.py 模块隐式确定 (gpt-4o, OpenAI)
+                # model_name and model_provider are now implicitly determined by the llm.models.py module (gpt-4o, OpenAI)
+                "model_name": "gpt-4o", # 可以硬编码用于元数据目的
+                "model_provider": "OpenAI", # 可以硬编码用于元数据目的
                 # "is_crypto": is_crypto, # 移除了 is_crypto 元数据，因为不再支持加密货币 (Removed is_crypto metadata as cryptocurrency is no longer supported)
             },
         }
@@ -170,8 +176,8 @@ def create_workflow(selected_analysts=None):
     return workflow
 
 
-# 移除了 is_crypto 参数，因为不再支持加密货币 (Removed is_crypto parameter as cryptocurrency is no longer supported)
-def run_all_analysts_with_round_table(tickers, start_date, end_date, portfolio, show_reasoning, model_name, model_provider):
+# 移除了 is_crypto, model_name, model_provider 参数 (Removed is_crypto, model_name, model_provider parameters)
+def run_all_analysts_with_round_table(tickers, start_date, end_date, portfolio, show_reasoning):
     """
     Run all available analysts and then conduct a round table discussion without user selection.
     This is a simplified workflow for when the user specifies the --round-table flag.
@@ -186,6 +192,8 @@ def run_all_analysts_with_round_table(tickers, start_date, end_date, portfolio, 
     print("")  # Empty line for spacing
     
     # Run the regular hedge fund with all analysts
+    # 调用 run_hedge_fund 时不再传递 model_name 和 model_provider
+    # model_name and model_provider are no longer passed when calling run_hedge_fund
     result = run_hedge_fund(
         tickers=tickers,
         start_date=start_date,
@@ -193,20 +201,22 @@ def run_all_analysts_with_round_table(tickers, start_date, end_date, portfolio, 
         portfolio=portfolio,
         show_reasoning=show_reasoning,
         selected_analysts=all_analysts,
-        model_name=model_name,
-        model_provider=model_provider,
+        # model_name=model_name, # 已移除 (Removed)
+        # model_provider=model_provider, # 已移除 (Removed)
         # is_crypto=is_crypto, # 移除了 is_crypto 参数传递 (Removed is_crypto parameter passing)
     )
     
     # Run the round table discussion
-    from round_table import run_round_table
+    # 调用 run_round_table 时不再传递 model_name 和 model_provider
+    # model_name and model_provider are no longer passed when calling run_round_table
+    from round_table import run_round_table # 确保此导入在文件顶部 (Ensure this import is at the top of the file)
     round_table_results = run_round_table(
         data={
             "tickers": tickers,
             "analyst_signals": result["analyst_signals"]
         },
-        model_name=model_name,
-        model_provider=model_provider,
+        # model_name=model_name, # 已移除 (Removed)
+        # model_provider=model_provider, # 已移除 (Removed)
         show_reasoning=show_reasoning
     )
     
@@ -270,29 +280,32 @@ if __name__ == "__main__":
     #     tickers = [ticker if ("-USD" in ticker.upper() or "/USD" in ticker.upper()) 
     #               else f"{ticker}-USD" for ticker in tickers]
 
-    # Select LLM model
-    model_choice = questionary.select(
-        "Select your LLM model:",
-        choices=[questionary.Choice(display, value=value) for display, value, _ in LLM_ORDER],
-        style=questionary.Style([
-            ("selected", "fg:green bold"),
-            ("pointer", "fg:green bold"),
-            ("highlighted", "fg:green"),
-            ("answer", "fg:green bold"),
-        ])
-    ).ask()
+    # 移除了 LLM 模型选择逻辑，因为模型固定为 GPT-4o
+    # Removed LLM model selection logic as the model is fixed to GPT-4o
+    # model_choice = questionary.select(
+    #     "Select your LLM model:",
+    #     choices=[questionary.Choice(display, value=value) for display, value, _ in LLM_ORDER],
+    #     style=questionary.Style([
+    #         ("selected", "fg:green bold"),
+    #         ("pointer", "fg:green bold"),
+    #         ("highlighted", "fg:green"),
+    #         ("answer", "fg:green bold"),
+    #     ])
+    # ).ask()
 
-    if not model_choice:
-        print("\n\nInterrupt received. Exiting...")
-        sys.exit(0)
-    else:
-        model_info = get_model_info(model_choice)
-        if model_info:
-            model_provider = model_info.provider.value
-            print(f"\nSelected {Fore.CYAN}{model_provider}{Style.RESET_ALL} model: {Fore.GREEN + Style.BRIGHT}{model_choice}{Style.RESET_ALL}\n")
-        else:
-            model_provider = "Unknown"
-            print(f"\nSelected model: {Fore.GREEN + Style.BRIGHT}{model_choice}{Style.RESET_ALL}\n")
+    # if not model_choice:
+    #     print("\n\nInterrupt received. Exiting...")
+    #     sys.exit(0)
+    # else:
+    #     model_info = get_model_info(model_choice) # get_model_info 已被移除
+    #     if model_info:
+    #         model_provider = model_info.provider.value
+    #         print(f"\nSelected {Fore.CYAN}{model_provider}{Style.RESET_ALL} model: {Fore.GREEN + Style.BRIGHT}{model_choice}{Style.RESET_ALL}\n")
+    #     else:
+    #         model_provider = "Unknown" # 此分支不应再到达
+    #         print(f"\nSelected model: {Fore.GREEN + Style.BRIGHT}{model_choice}{Style.RESET_ALL}\n")
+    print(f"\n{Fore.CYAN}Using fixed LLM model: {Fore.GREEN + Style.BRIGHT}OpenAI GPT-4o{Style.RESET_ALL}\n")
+
 
     # Validate dates if provided
     if args.start_date:
@@ -345,8 +358,10 @@ if __name__ == "__main__":
             end_date=end_date,
             portfolio=portfolio,
             show_reasoning=args.show_reasoning,
-            model_name=model_choice,
-            model_provider=model_provider,
+            # model_name 和 model_provider 参数已移除
+            # model_name and model_provider parameters removed
+            # model_name=model_choice,
+            # model_provider=model_provider,
             # is_crypto=args.crypto # 移除了 is_crypto 参数传递 (Removed is_crypto parameter passing)
         )
         print_trading_output(result)
@@ -394,8 +409,10 @@ if __name__ == "__main__":
             portfolio=portfolio,
             show_reasoning=args.show_reasoning,
             selected_analysts=selected_analysts,
-            model_name=model_choice,
-            model_provider=model_provider,
+            # model_name 和 model_provider 参数已移除
+            # model_name and model_provider parameters removed
+            # model_name=model_choice,
+            # model_provider=model_provider,
             # is_crypto=args.crypto # 移除了 is_crypto 参数传递 (Removed is_crypto parameter passing)
         )
         print_trading_output(result)

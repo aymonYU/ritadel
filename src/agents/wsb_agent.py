@@ -628,11 +628,13 @@ def analyze_options_potential(metrics: list, financial_line_items: list, market_
     }
 
 
+# 移除了 model_name 和 model_provider 参数，因为模型固定为 GPT-4o
+# Removed model_name and model_provider parameters as the model is fixed to GPT-4o
 def generate_wsb_output(
     ticker: str,
     analysis_data: dict[str, any],
-    model_name: str,
-    model_provider: str,
+    # model_name: str, # 已移除 (Removed)
+    # model_provider: str, # 已移除 (Removed)
 ) -> WSBSignal:
     """Generate WallStreetBets style investment decision from LLM."""
     template = ChatPromptTemplate.from_messages([
@@ -696,10 +698,12 @@ def generate_wsb_output(
     def create_default_signal():
         return WSBSignal(signal="neutral", confidence=0.0, reasoning="Error in analysis, defaulting to neutral")
 
+    # 调用 call_llm 时不再传递 model_name 和 model_provider
+    # model_name and model_provider are no longer passed when calling call_llm
     return call_llm(
         prompt=prompt,
-        model_name=model_name,
-        model_provider=model_provider,
+        # model_name=model_name, # 已移除 (Removed)
+        # model_provider=model_provider, # 已移除 (Removed)
         pydantic_model=WSBSignal,
         agent_name="wsb_agent",
         default_factory=create_default_signal,

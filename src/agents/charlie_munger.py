@@ -660,11 +660,13 @@ def analyze_news_sentiment(news_items: list) -> str:
     return f"Qualitative review of {len(news_items)} recent news items would be needed"
 
 
+# 移除了 model_name 和 model_provider 参数，因为模型固定为 GPT-4o
+# Removed model_name and model_provider parameters as the model is fixed to GPT-4o
 def generate_munger_output(
     ticker: str,
     analysis_data: dict[str, any],
-    model_name: str,
-    model_provider: str,
+    # model_name: str, # 已移除 (Removed)
+    # model_provider: str, # 已移除 (Removed)
 ) -> CharlieMungerSignal:
     """
     Generates investment decisions in the style of Charlie Munger.
@@ -724,10 +726,12 @@ def generate_munger_output(
             reasoning="Error in analysis, defaulting to neutral"
         )
 
+    # 调用 call_llm 时不再传递 model_name 和 model_provider
+    # model_name and model_provider are no longer passed when calling call_llm
     return call_llm(
         prompt=prompt, 
-        model_name=model_name, 
-        model_provider=model_provider, 
+        # model_name=model_name, # 已移除 (Removed)
+        # model_provider=model_provider, # 已移除 (Removed)
         pydantic_model=CharlieMungerSignal, 
         agent_name="charlie_munger_agent", 
         default_factory=create_default_charlie_munger_signal,

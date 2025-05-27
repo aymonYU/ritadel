@@ -34,8 +34,10 @@ class Backtester:
         start_date: str,
         end_date: str,
         initial_capital: float,
-        model_name: str = "gpt-4o",
-        model_provider: str = "OpenAI",
+        # 移除了 model_name 和 model_provider 参数，因为模型固定为 GPT-4o
+        # Removed model_name and model_provider parameters as the model is fixed to GPT-4o
+        # model_name: str = "gpt-4o", 
+        # model_provider: str = "OpenAI",
         selected_analysts: list[str] = [],
         initial_margin_requirement: float = 0.0,
         # is_crypto: bool = False, # 移除了 is_crypto 参数，因为不再支持加密货币 (Removed is_crypto parameter as cryptocurrency is no longer supported)
@@ -46,8 +48,8 @@ class Backtester:
         :param start_date: Start date string (YYYY-MM-DD).
         :param end_date: End date string (YYYY-MM-DD).
         :param initial_capital: Starting portfolio cash.
-        :param model_name: Which LLM model name to use (gpt-4, etc).
-        :param model_provider: Which LLM provider (OpenAI, etc).
+        # :param model_name: Which LLM model name to use (gpt-4, etc). # 已移除 (Removed)
+        # :param model_provider: Which LLM provider (OpenAI, etc). # 已移除 (Removed)
         :param selected_analysts: List of analyst names or IDs to incorporate.
         :param initial_margin_requirement: The margin ratio (e.g. 0.5 = 50%).
         # :param is_crypto: Whether to analyze cryptocurrency instead of stocks. # is_crypto 参数说明已移除 (is_crypto parameter description removed)
@@ -57,8 +59,8 @@ class Backtester:
         self.start_date = start_date
         self.end_date = end_date
         self.initial_capital = initial_capital
-        self.model_name = model_name
-        self.model_provider = model_provider
+        # self.model_name = model_name # 已移除 (Removed)
+        # self.model_provider = model_provider # 已移除 (Removed)
         self.selected_analysts = selected_analysts
         # self.is_crypto = is_crypto # 移除了 is_crypto 实例变量的赋值 (Removed assignment of is_crypto instance variable)
 
@@ -363,8 +365,10 @@ class Backtester:
                 start_date=lookback_start,
                 end_date=current_date_str,
                 portfolio=self.portfolio,
-                model_name=self.model_name,
-                model_provider=self.model_provider,
+                # model_name 和 model_provider 参数已从 agent (run_hedge_fund) 调用中移除
+                # model_name and model_provider parameters removed from agent (run_hedge_fund) call
+                # model_name=self.model_name,
+                # model_provider=self.model_provider,
                 selected_analysts=self.selected_analysts,
             )
             decisions = output["decisions"]
@@ -707,39 +711,44 @@ if __name__ == "__main__":
             f"{', '.join(Fore.GREEN + choice.title().replace('_', ' ') + Style.RESET_ALL for choice in choices)}"
         )
 
-    # Select LLM model
-    model_choice = questionary.select(
-        "Select your LLM model:",
-        choices=[questionary.Choice(display, value=value) for display, value, _ in LLM_ORDER],
-        style=questionary.Style([
-            ("selected", "fg:green bold"),
-            ("pointer", "fg:green bold"),
-            ("highlighted", "fg:green"),
-            ("answer", "fg:green bold"),
-        ])
-    ).ask()
+    # 移除了 LLM 模型选择逻辑，因为模型固定为 GPT-4o
+    # Removed LLM model selection logic as the model is fixed to GPT-4o
+    # model_choice = questionary.select(
+    #     "Select your LLM model:",
+    #     choices=[questionary.Choice(display, value=value) for display, value, _ in LLM_ORDER],
+    #     style=questionary.Style([
+    #         ("selected", "fg:green bold"),
+    #         ("pointer", "fg:green bold"),
+    #         ("highlighted", "fg:green"),
+    #         ("answer", "fg:green bold"),
+    #     ])
+    # ).ask()
 
-    if not model_choice:
-        print("\n\nInterrupt received. Exiting...")
-        sys.exit(0)
-    else:
-        model_info = get_model_info(model_choice)
-        if model_info:
-            model_provider = model_info.provider.value
-            print(f"\nSelected {Fore.CYAN}{model_provider}{Style.RESET_ALL} model: {Fore.GREEN + Style.BRIGHT}{model_choice}{Style.RESET_ALL}\n")
-        else:
-            model_provider = "Unknown"
-            print(f"\nSelected model: {Fore.GREEN + Style.BRIGHT}{model_choice}{Style.RESET_ALL}\n")
+    # if not model_choice:
+    #     print("\n\nInterrupt received. Exiting...")
+    #     sys.exit(0)
+    # else:
+    #     model_info = get_model_info(model_choice) # get_model_info 已被移除 (Removed)
+    #     if model_info:
+    #         model_provider = model_info.provider.value
+    #         print(f"\nSelected {Fore.CYAN}{model_provider}{Style.RESET_ALL} model: {Fore.GREEN + Style.BRIGHT}{model_choice}{Style.RESET_ALL}\n")
+    #     else:
+    #         model_provider = "Unknown" # 此分支不应再到达
+    #         print(f"\nSelected model: {Fore.GREEN + Style.BRIGHT}{model_choice}{Style.RESET_ALL}\n")
+    print(f"\n{Fore.CYAN}Using fixed LLM model: {Fore.GREEN + Style.BRIGHT}OpenAI GPT-4o{Style.RESET_ALL}\n")
+
 
     # Create and run the backtester
+    # Backtester 实例化时不再传递 model_name 和 model_provider
+    # model_name and model_provider are no longer passed when instantiating Backtester
     backtester = Backtester(
         agent=run_hedge_fund,
         tickers=tickers,
         start_date=args.start_date,
         end_date=args.end_date,
         initial_capital=args.initial_capital,
-        model_name=model_choice,
-        model_provider=model_provider,
+        # model_name=model_choice, # 已移除 (Removed)
+        # model_provider=model_provider, # 已移除 (Removed)
         selected_analysts=selected_analysts,
         initial_margin_requirement=args.margin_requirement,
         # is_crypto=args.crypto # 移除了 is_crypto 参数传递 (Removed is_crypto parameter passing)

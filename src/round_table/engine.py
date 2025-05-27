@@ -117,11 +117,13 @@ class TopicsResponse(BaseModel):
         # For any other case, return default topics
         return {"topics": ["Valuation", "Growth prospects", "Competitive position"]}
 
+# 移除了 model_name 和 model_provider 参数
+# Removed model_name and model_provider parameters
 def simulate_round_table(
     ticker: str,
     ticker_signals: dict[str, any],
-    model_name: str,
-    model_provider: str,
+    # model_name: str, # 已移除 (Removed)
+    # model_provider: str, # 已移除 (Removed)
 ) -> RoundTableOutput:
     """Simulate a round table discussion among analysts with multiple API calls."""
     # Setup the analysts based on signals
@@ -141,8 +143,10 @@ def simulate_round_table(
                     ticker=ticker,
                     ticker_signal=ticker_signals[analyst.name],
                     analyst_style=analyst.style,
-                    model_name=model_name,
-                    model_provider=model_provider
+                    # model_name 和 model_provider 参数已移除
+                    # model_name and model_provider parameters removed
+                    # model_name=model_name,
+                    # model_provider=model_provider
                 )
                 analyst.initial_position = position
                 full_transcript += f"\n\n{analyst.name}: {position}"
@@ -168,8 +172,10 @@ def simulate_round_table(
             transcript_so_far=full_transcript,
             analysts=primary_debaters,
             phase="questioning",
-            model_name=model_name,
-            model_provider=model_provider
+            # model_name 和 model_provider 参数已移除
+            # model_name and model_provider parameters removed
+            # model_name=model_name,
+            # model_provider=model_provider
         )
         conversation_turns.extend(questions)
     except Exception as e:
@@ -184,8 +190,10 @@ def simulate_round_table(
             transcript_so_far=full_transcript + "\n\n" + "\n\n".join(questions),
             analysts=analysts,
             primary_debaters=primary_debaters,
-            model_name=model_name,
-            model_provider=model_provider
+            # model_name 和 model_provider 参数已移除
+            # model_name and model_provider parameters removed
+            # model_name=model_name,
+            # model_provider=model_provider
         )
         conversation_turns.extend(debate_exchanges)
     except Exception as e:
@@ -200,8 +208,10 @@ def simulate_round_table(
             ticker=ticker,
             transcript_so_far=current_transcript,
             analysts=primary_debaters,
-            model_name=model_name,
-            model_provider=model_provider
+            # model_name 和 model_provider 参数已移除
+            # model_name and model_provider parameters removed
+            # model_name=model_name,
+            # model_provider=model_provider
         )
         conversation_turns.extend(synthesis)
     except Exception as e:
@@ -212,11 +222,13 @@ def simulate_round_table(
     
     # Moderator conclusion
     try:
+        # model_name 和 model_provider 参数已移除
+        # model_name and model_provider parameters removed
         moderator_conclusion = generate_moderator_conclusion(
             ticker=ticker,
             transcript=full_transcript,
-            model_name=model_name,
-            model_provider=model_provider
+            # model_name=model_name,
+            # model_provider=model_provider
         )
         full_transcript += f"\n\n{moderator_conclusion}"
     except Exception as e:
@@ -230,8 +242,10 @@ def simulate_round_table(
             ticker=ticker,
             transcript=full_transcript,
             ticker_signals=ticker_signals,
-            model_name=model_name,
-            model_provider=model_provider
+            # model_name 和 model_provider 参数已移除
+            # model_name and model_provider parameters removed
+            # model_name=model_name,
+            # model_provider=model_provider
         )
     except Exception as e:
         print(f"Error generating final analysis: {e}")
@@ -344,7 +358,9 @@ def generate_moderator_intro(ticker):
     """Generate the moderator's introduction."""
     return f"Moderator: Welcome everyone to our investment round table discussion on {ticker}. Today we'll examine the bull and bear cases, analyze the company's fundamentals, technical indicators, and reach a consensus investment decision. Let's begin with each of you sharing your initial position."
 
-def generate_initial_position(analyst_name, ticker, ticker_signal, analyst_style, model_name, model_provider):
+# 移除了 model_name 和 model_provider 参数
+# Removed model_name and model_provider parameters
+def generate_initial_position(analyst_name, ticker, ticker_signal, analyst_style): #, model_name, model_provider):
     """Generate initial position statement for an analyst (separate API call)."""
     template = ChatPromptTemplate.from_messages([
         (
@@ -386,10 +402,12 @@ def generate_initial_position(analyst_name, ticker, ticker_signal, analyst_style
     def create_default_position():
         return InitialPositionResponse(text=f"I'm {ticker_signal.get('signal', 'neutral')} on {ticker} based on my analysis.")
     
+    # 调用 call_llm 时不再传递 model_name 和 model_provider
+    # model_name and model_provider are no longer passed when calling call_llm
     response = call_llm(
         prompt=prompt,
-        model_name=model_name,
-        model_provider=model_provider,
+        # model_name=model_name, # 已移除 (Removed)
+        # model_provider=model_provider, # 已移除 (Removed)
         pydantic_model=InitialPositionResponse,
         agent_name="round_table",
         default_factory=create_default_position
@@ -434,7 +452,9 @@ def select_primary_debaters(ticker_signals, analysts):
     
     return primary_debaters
 
-def generate_questions(ticker, transcript_so_far, analysts, phase, model_name, model_provider):
+# 移除了 model_name 和 model_provider 参数
+# Removed model_name and model_provider parameters
+def generate_questions(ticker, transcript_so_far, analysts, phase): #, model_name, model_provider):
     """Generate probing questions between analysts with better error handling."""
     questions = []
     
@@ -472,10 +492,12 @@ Do not include any JSON formatting or additional text."""
             return QuestionResponse(text=f"{questioner.name}: {responder.name}, could you elaborate on your thesis for {ticker}? I'm particularly interested in your assumptions about growth and valuation.")
         
         try:
+            # 调用 call_llm 时不再传递 model_name 和 model_provider
+            # model_name and model_provider are no longer passed when calling call_llm
             question_result = call_llm(
                 prompt=final_prompt,
-                model_name=model_name,
-                model_provider=model_provider,
+                # model_name=model_name, # 已移除 (Removed)
+                # model_provider=model_provider, # 已移除 (Removed)
                 pydantic_model=QuestionResponse,
                 agent_name="round_table",
                 default_factory=create_default_question
@@ -507,10 +529,12 @@ Do not include any JSON formatting or additional text."""
                 return AnswerResponse(text=f"{responder.name}: Based on my analysis of {ticker}, I believe my position is justified by the fundamentals and market conditions.")
             
             try:
+                # 调用 call_llm 时不再传递 model_name 和 model_provider
+                # model_name and model_provider are no longer passed when calling call_llm
                 answer_result = call_llm(
                     prompt=answer_final_prompt,
-                    model_name=model_name,
-                    model_provider=model_provider,
+                    # model_name=model_name, # 已移除 (Removed)
+                    # model_provider=model_provider, # 已移除 (Removed)
                     pydantic_model=AnswerResponse,
                     agent_name="round_table",
                     default_factory=create_default_answer
@@ -535,7 +559,9 @@ Do not include any JSON formatting or additional text."""
     
     return questions
 
-def identify_debate_topics(ticker, transcript, model_name, model_provider):
+# 移除了 model_name 和 model_provider 参数
+# Removed model_name and model_provider parameters
+def identify_debate_topics(ticker, transcript): #, model_name, model_provider):
     """Identify key topics for debate from the discussion so far."""
     # Default topics to fall back on
     default_topics = ["Valuation", "Growth Prospects", "Competitive Position"]
@@ -561,10 +587,12 @@ Example: ["Valuation multiples", "AI market growth", "Competitive threats"]"""
             return SimpleTextResponse(text=json.dumps(default_topics))
         
         # Get response as plain text
+        # 调用 call_llm 时不再传递 model_name 和 model_provider
+        # model_name and model_provider are no longer passed when calling call_llm
         response_result = call_llm(
             prompt=final_prompt,
-            model_name=model_name,
-            model_provider=model_provider,
+            # model_name=model_name, # 已移除 (Removed)
+            # model_provider=model_provider, # 已移除 (Removed)
             pydantic_model=SimpleTextResponse,
             agent_name="round_table",
             default_factory=create_default_topics_text
@@ -616,13 +644,17 @@ Example: ["Valuation multiples", "AI market growth", "Competitive threats"]"""
     # Return default topics if all else fails
     return default_topics
 
-def generate_debate_exchanges(ticker, transcript_so_far, analysts, primary_debaters, model_name, model_provider):
+# 移除了 model_name 和 model_provider 参数
+# Removed model_name and model_provider parameters
+def generate_debate_exchanges(ticker, transcript_so_far, analysts, primary_debaters): #, model_name, model_provider):
     """Generate deeper debate exchanges between analysts focusing on key disagreements."""
     exchanges = []
     
     # Extract key topics for debate based on initial positions
     progress.update_status("round_table", ticker, "Identifying key debate topics")
-    topics = identify_debate_topics(ticker, transcript_so_far, model_name, model_provider)
+    # 调用 identify_debate_topics 时不再传递 model_name 和 model_provider
+    # model_name and model_provider are no longer passed when calling identify_debate_topics
+    topics = identify_debate_topics(ticker, transcript_so_far) #, model_name, model_provider)
     
     # Add a moderator message to transition to focused debate
     moderator_message = f"Moderator: Now let's dig deeper into some key areas of disagreement. Let's start by discussing {topics[0]}."
@@ -661,10 +693,12 @@ Do not include any JSON formatting or additional text."""
             return DebateResponse(text=f"{debater1.name}: Regarding {topic}, I see strong potential for {ticker} based on the fundamentals and market trends.")
         
         try:
+            # 调用 call_llm 时不再传递 model_name 和 model_provider
+            # model_name and model_provider are no longer passed when calling call_llm
             argument_result = call_llm(
                 prompt=final_prompt,
-                model_name=model_name,
-                model_provider=model_provider,
+                # model_name=model_name, # 已移除 (Removed)
+                # model_provider=model_provider, # 已移除 (Removed)
                 pydantic_model=DebateResponse,
                 agent_name="round_table",
                 default_factory=create_default_argument
@@ -700,10 +734,12 @@ Do not include any JSON formatting or additional text."""
             return DebateResponse(text=f"{debater2.name}: I disagree with the bullish view on {topic}. The evidence actually suggests caution for {ticker}.")
         
         try:
+            # 调用 call_llm 时不再传递 model_name 和 model_provider
+            # model_name and model_provider are no longer passed when calling call_llm
             counterpoint_result = call_llm(
                 prompt=final_prompt,
-                model_name=model_name,
-                model_provider=model_provider,
+                # model_name=model_name, # 已移除 (Removed)
+                # model_provider=model_provider, # 已移除 (Removed)
                 pydantic_model=DebateResponse,
                 agent_name="round_table",
                 default_factory=create_default_counterargument
@@ -718,7 +754,9 @@ Do not include any JSON formatting or additional text."""
     
     return exchanges
 
-def generate_synthesis(ticker, transcript_so_far, analysts, model_name, model_provider):
+# 移除了 model_name 和 model_provider 参数
+# Removed model_name and model_provider parameters
+def generate_synthesis(ticker, transcript_so_far, analysts): #, model_name, model_provider):
     """Generate synthesis statements where analysts refine their positions."""
     synthesis = []
     
@@ -750,10 +788,12 @@ Do not include any JSON formatting or additional text."""
             return SynthesisResponse(text=f"{analyst.name}: After considering all perspectives, I maintain my position on {ticker}.")
         
         try:
+            # 调用 call_llm 时不再传递 model_name 和 model_provider
+            # model_name and model_provider are no longer passed when calling call_llm
             position_result = call_llm(
                 prompt=final_prompt,
-                model_name=model_name,
-                model_provider=model_provider,
+                # model_name=model_name, # 已移除 (Removed)
+                # model_provider=model_provider, # 已移除 (Removed)
                 pydantic_model=SynthesisResponse,
                 agent_name="round_table",
                 default_factory=create_default_synthesis
@@ -770,7 +810,9 @@ Do not include any JSON formatting or additional text."""
     
     return synthesis
 
-def generate_moderator_conclusion(ticker, transcript, model_name, model_provider):
+# 移除了 model_name 和 model_provider 参数
+# Removed model_name and model_provider parameters
+def generate_moderator_conclusion(ticker, transcript): #, model_name, model_provider):
     """Generate the moderator's conclusion."""
     conclusion_prompt = """You are the moderator of an investment round table discussion.
 
@@ -793,10 +835,12 @@ Do not include any JSON formatting or additional text."""
         return ConclusionResponse(text=f"Moderator: Thank you all for your thoughtful analysis of {ticker}. We've heard a range of perspectives today, from bullish to bearish, each supported by different analytical approaches.")
     
     try:
+        # 调用 call_llm 时不再传递 model_name 和 model_provider
+        # model_name and model_provider are no longer passed when calling call_llm
         conclusion_result = call_llm(
             prompt=final_prompt,
-            model_name=model_name,
-            model_provider=model_provider,
+            # model_name=model_name, # 已移除 (Removed)
+            # model_provider=model_provider, # 已移除 (Removed)
             pydantic_model=ConclusionResponse,
             agent_name="round_table",
             default_factory=create_default_conclusion
@@ -807,7 +851,9 @@ Do not include any JSON formatting or additional text."""
         print(f"Error generating conclusion: {e}")
         return create_default_conclusion().text
 
-def generate_final_analysis(ticker, transcript, ticker_signals, model_name, model_provider):
+# 移除了 model_name 和 model_provider 参数
+# Removed model_name and model_provider parameters
+def generate_final_analysis(ticker, transcript, ticker_signals): #, model_name, model_provider):
     """Generate the final analysis and decision with retry logic for rate limits."""
     # Create a prompt that clearly includes the transcript and requests raw JSON
     analysis_prompt = "You are an objective investment analyst reviewing this round table discussion transcript:\n\n" + \
