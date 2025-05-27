@@ -3,11 +3,17 @@ import { Box, Typography, Card, CardContent, TextField, Button, Grid, Switch, Fo
 import { Save as SaveIcon, Refresh as RefreshIcon } from '@mui/icons-material';
 
 export default function Settings() {
+  // 状态变量：OpenAI API 密钥
+  // State variable: OpenAI API Key
   const [openAIKey, setOpenAIKey] = useState('');
-  const [anthropicKey, setAnthropicKey] = useState('');
-  const [groqKey, setGroqKey] = useState('');
-  const [geminiKey, setGeminiKey] = useState('');
-  const [defaultModel, setDefaultModel] = useState('gpt-4o');
+  // Anthropic, Groq, 和 Gemini API 密钥状态变量已被移除，因为模型固定为 GPT-4o
+  // Anthropic, Groq, and Gemini API key state variables have been removed as the model is fixed to GPT-4o
+  // const [anthropicKey, setAnthropicKey] = useState('');
+  // const [groqKey, setGroqKey] = useState('');
+  // const [geminiKey, setGeminiKey] = useState('');
+  // defaultModel 状态变量已被移除，因为模型固定为 GPT-4o
+  // defaultModel state variable has been removed as the model is fixed to GPT-4o
+  // const [defaultModel, setDefaultModel] = useState('gpt-4o'); 
   const [saveHistory, setSaveHistory] = useState(true);
   const [backtestDefaults, setBacktestDefaults] = useState({
     initialCapital: 100000,
@@ -27,10 +33,14 @@ export default function Settings() {
   
   const handleReset = () => {
     setOpenAIKey('');
-    setAnthropicKey('');
-    setGroqKey('');
-    setGeminiKey('');
-    setDefaultModel('gpt-4o');
+    // Anthropic, Groq, 和 Gemini API 密钥的重置逻辑已被移除
+    // Reset logic for Anthropic, Groq, and Gemini API keys has been removed
+    // setAnthropicKey('');
+    // setGroqKey('');
+    // setGeminiKey('');
+    // defaultModel 的重置逻辑已被移除
+    // Reset logic for defaultModel has been removed
+    // setDefaultModel('gpt-4o');
     setSaveHistory(true);
     setBacktestDefaults({
       initialCapital: 100000,
@@ -65,7 +75,9 @@ export default function Settings() {
                   onChange={(e) => setOpenAIKey(e.target.value)}
                   placeholder="sk-..."
                 />
-                
+                {/* Anthropic API 密钥输入框已被移除 */}
+                {/* Anthropic API Key input field has been removed */}
+                {/*
                 <TextField
                   label="Anthropic API Key"
                   fullWidth
@@ -75,7 +87,10 @@ export default function Settings() {
                   onChange={(e) => setAnthropicKey(e.target.value)}
                   placeholder="sk-ant-..."
                 />
-                
+                */}
+                {/* Groq API 密钥输入框已被移除 */}
+                {/* Groq API Key input field has been removed */}
+                {/*
                 <TextField
                   label="Groq API Key"
                   fullWidth
@@ -85,7 +100,10 @@ export default function Settings() {
                   onChange={(e) => setGroqKey(e.target.value)}
                   placeholder="gsk_..."
                 />
-                
+                */}
+                {/* Gemini API 密钥输入框已被移除 */}
+                {/* Gemini API Key input field has been removed */}
+                {/*
                 <TextField
                   label="Gemini API Key"
                   fullWidth
@@ -95,12 +113,20 @@ export default function Settings() {
                   onChange={(e) => setGeminiKey(e.target.value)}
                   placeholder="..."
                 />
+                */}
               </Box>
               
               <Typography variant="h6" gutterBottom>
-                Default Model
+                LLM Model {/* LLM 模型 */}
               </Typography>
-              
+              {/* 模型选择下拉框已被移除，替换为固定模型信息的文本显示 */}
+              {/* Model selection dropdown has been removed and replaced with text displaying fixed model information. */}
+              <Typography variant="body1" sx={{ mt: 1, mb: 2 }}>
+                系统当前固定使用 OpenAI GPT-4o 模型。
+                <br />
+                (The system currently uses a fixed OpenAI GPT-4o model.)
+              </Typography>
+              {/*
               <FormControl fullWidth margin="normal">
                 <InputLabel>Default LLM Model</InputLabel>
                 <Select
@@ -117,6 +143,7 @@ export default function Settings() {
                   <MenuItem value="gemini-2.0-flash">[gemini] gemini-2.0-flash</MenuItem>
                 </Select>
               </FormControl>
+              */}
             </CardContent>
           </Card>
         </Grid>

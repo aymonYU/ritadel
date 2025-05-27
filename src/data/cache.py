@@ -1,5 +1,13 @@
 class Cache:
-    """In-memory cache for API responses."""
+    """
+    In-memory cache for API responses.
+    Note: This cache implementation is generic and does not differentiate between asset types (e.g., stocks vs. crypto).
+    The responsibility for providing appropriate and distinct cache keys (if needed, though crypto is no longer supported)
+    lies with the calling modules (e.g., src/tools/api.py).
+    中文注：这是一个内存缓存，用于 API 响应。
+    注意：此缓存实现是通用的，不区分资产类型（例如股票与加密货币）。
+    提供适当且唯一的缓存键（如果需要，尽管加密货币已不再支持）的责任在于调用模块（例如 src/tools/api.py）。
+    """
 
     def __init__(self):
         self._prices_cache: dict[str, list[dict[str, any]]] = {}

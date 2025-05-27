@@ -54,7 +54,7 @@ def run_hedge_fund(
     selected_analysts: list[str] = [],
     model_name: str = "gpt-4o",
     model_provider: str = "OpenAI",
-    is_crypto: bool = False,
+    # is_crypto: bool = False, # 移除了 is_crypto 参数，因为不再支持加密货币 (Removed is_crypto parameter as cryptocurrency is no longer supported)
 ):
     # Start progress tracking
     progress.start()
@@ -77,13 +77,13 @@ def run_hedge_fund(
                 "end_date": end_date,
                 "portfolio": portfolio,
                 "analyst_signals": {},
-                "is_crypto": is_crypto,
+                # "is_crypto": is_crypto, # 移除了 is_crypto 状态，因为不再支持加密货币 (Removed is_crypto state as cryptocurrency is no longer supported)
             },
             "metadata": {
                 "show_reasoning": show_reasoning,
                 "model_name": model_name,
                 "model_provider": model_provider,
-                "is_crypto": is_crypto,
+                # "is_crypto": is_crypto, # 移除了 is_crypto 元数据，因为不再支持加密货币 (Removed is_crypto metadata as cryptocurrency is no longer supported)
             },
         }
 
@@ -170,7 +170,8 @@ def create_workflow(selected_analysts=None):
     return workflow
 
 
-def run_all_analysts_with_round_table(tickers, start_date, end_date, portfolio, show_reasoning, model_name, model_provider, is_crypto=False):
+# 移除了 is_crypto 参数，因为不再支持加密货币 (Removed is_crypto parameter as cryptocurrency is no longer supported)
+def run_all_analysts_with_round_table(tickers, start_date, end_date, portfolio, show_reasoning, model_name, model_provider):
     """
     Run all available analysts and then conduct a round table discussion without user selection.
     This is a simplified workflow for when the user specifies the --round-table flag.
@@ -194,7 +195,7 @@ def run_all_analysts_with_round_table(tickers, start_date, end_date, portfolio, 
         selected_analysts=all_analysts,
         model_name=model_name,
         model_provider=model_provider,
-        is_crypto=is_crypto,
+        # is_crypto=is_crypto, # 移除了 is_crypto 参数传递 (Removed is_crypto parameter passing)
     )
     
     # Run the round table discussion
@@ -250,16 +251,24 @@ if __name__ == "__main__":
         action="store_true",
         help="Analyze cryptocurrency instead of stocks (append -USD to ticker symbols)"
     )
+    # 移除了 --crypto 参数的解析和相关逻辑，因为不再支持加密货币
+    # Removed --crypto argument parsing and related logic as cryptocurrency is no longer supported.
+    # parser.add_argument(
+    #     "--crypto",
+    #     action="store_true",
+    #     help="Analyze cryptocurrency instead of stocks (append -USD to ticker symbols)"
+    # )
 
     args = parser.parse_args()
 
     # Parse tickers from comma-separated string
     tickers = [ticker.strip() for ticker in args.tickers.split(",")]
     
-    # If crypto mode is enabled, append USD suffix to tickers if not already present
-    if args.crypto:
-        tickers = [ticker if ("-USD" in ticker.upper() or "/USD" in ticker.upper()) 
-                  else f"{ticker}-USD" for ticker in tickers]
+    # 移除了根据 args.crypto 修改 tickers 的逻辑
+    # Removed logic to modify tickers based on args.crypto
+    # if args.crypto:
+    #     tickers = [ticker if ("-USD" in ticker.upper() or "/USD" in ticker.upper()) 
+    #               else f"{ticker}-USD" for ticker in tickers]
 
     # Select LLM model
     model_choice = questionary.select(
@@ -338,7 +347,7 @@ if __name__ == "__main__":
             show_reasoning=args.show_reasoning,
             model_name=model_choice,
             model_provider=model_provider,
-            is_crypto=args.crypto
+            # is_crypto=args.crypto # 移除了 is_crypto 参数传递 (Removed is_crypto parameter passing)
         )
         print_trading_output(result)
     else:
@@ -387,6 +396,6 @@ if __name__ == "__main__":
             selected_analysts=selected_analysts,
             model_name=model_choice,
             model_provider=model_provider,
-            is_crypto=args.crypto
+            # is_crypto=args.crypto # 移除了 is_crypto 参数传递 (Removed is_crypto parameter passing)
         )
         print_trading_output(result)
