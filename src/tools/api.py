@@ -148,109 +148,6 @@ def get_prices(ticker: str, start_date: str, end_date: str) -> list[Price]:
     # Return empty list if all sources fail
     return []
 
-# 移除了 get_crypto_prices 函数，因为它专门用于获取加密货币价格数据，现在不再支持
-# Removed get_crypto_prices function as it was specific to fetching cryptocurrency price data, which is no longer supported.
-# def get_crypto_prices(ticker: str, start_date: str, end_date: str) -> list[Price]:
-#     """Fetch cryptocurrency price data from multiple sources with fallback strategy."""
-#     prices = []
-#     
-#     # Convert dates to unix timestamps for APIs that require it
-#     start_timestamp = int(datetime.strptime(start_date, "%Y-%m-%d").timestamp())
-#     end_timestamp = int(datetime.strptime(end_date, "%Y-%m-%d").timestamp())
-#     
-#     # Try CoinCap API first (completely free, no API key required)
-#     try:
-#         # Normalize ticker symbol (remove -USD or /USD if present)
-#         coin_id = ticker.lower().replace("-usd", "").replace("/usd", "")
-#         
-#         # CoinCap uses lowercase, standard names like "bitcoin" instead of symbols
-#         if coin_id == "btc":
-#             coin_id = "bitcoin"
-#         elif coin_id == "eth":
-#             coin_id = "ethereum"
-#         elif coin_id == "sol":
-#             coin_id = "solana"
-#         
-#         # Calculate interval in days for history API
-#         interval = "d1"  # daily interval
-#         
-#         # CoinCap API for historical data
-#         url = f"https://api.coincap.io/v2/assets/{coin_id}/history"
-#         params = {
-#             "interval": interval,
-#             "start": start_timestamp * 1000,  # Convert to milliseconds
-#             "end": end_timestamp * 1000,
-#         }
-#         
-#         response = requests.get(url, params=params)
-#         
-#         if response.status_code == 200:
-#             data = response.json()
-#             if "data" in data and data["data"]:
-#                 price_data = data["data"]
-#                 
-#                 # Group data by day to create OHLC
-#                 daily_data = {}
-#                 
-#                 for item in price_data:
-#                     timestamp_ms = int(item["time"])
-#                     price = float(item["priceUsd"])
-#                     date_str = datetime.fromtimestamp(timestamp_ms / 1000).strftime('%Y-%m-%d')
-#                     
-#                     if start_date <= date_str <= end_date:
-#                         if date_str not in daily_data:
-#                             daily_data[date_str] = {
-#                                 "open": price,
-#                                 "high": price,
-#                                 "low": price,
-#                                 "close": price,
-#                                 "prices": [price]
-#                             }
-#                         else:
-#                             daily_data[date_str]["high"] = max(daily_data[date_str]["high"], price)
-#                             daily_data[date_str]["low"] = min(daily_data[date_str]["low"], price)
-#                             daily_data[date_str]["close"] = price
-#                             daily_data[date_str]["prices"].append(price)
-#                 
-#                 # Get volume data from asset endpoint
-#                 volume_url = f"https://api.coincap.io/v2/assets/{coin_id}"
-#                 volume_response = requests.get(volume_url)
-#                 volume_data = {}
-#                 
-#                 if volume_response.status_code == 200:
-#                     asset_data = volume_response.json()
-#                     if "data" in asset_data and asset_data["data"]:
-#                         volume = float(asset_data["data"]["volumeUsd24Hr"])
-#                         # Use the same volume for all days as an approximation
-#                         for date_str in daily_data:
-#                             volume_data[date_str] = volume
-#                 
-#                 # Create price objects from the daily data
-#                 for date_str, data in daily_data.items():
-#                     price_obj = Price(
-#                         open=data["open"],
-#                         close=data["close"],
-#                         high=data["high"],
-#                         low=data["low"],
-#                         volume=volume_data.get(date_str, 0),
-#                         time=date_str
-#                     )
-#                     prices.append(price_obj)
-#                 
-#                 if prices:
-#                     # Sort by date for consistency
-#                     prices.sort(key=lambda x: x.time)
-#                     # Cache the results
-#                     _cache.set_prices(f"crypto_{ticker}", [p.model_dump() for p in prices])
-#                     return prices
-#     except Exception as e:
-#         print(f"CoinCap error for {ticker}: {str(e)}")
-#     
-#     # Fallback to other APIs as they were already implemented
-#     # ... existing code for CoinGecko, CryptoCompare, and Binance ...
-
-# is_crypto 参数已移除，此函数现在只获取股票的财务指标
-# is_crypto parameter removed, this function now only fetches financial metrics for stocks
 def get_financial_metrics(
     ticker: str,
     end_date: str,
@@ -258,14 +155,7 @@ def get_financial_metrics(
     limit: int = 10
 ) -> list[FinancialMetrics]:
     """Fetch financial metrics from cache or APIs."""
-    # 移除了 is_crypto 条件判断和 get_crypto_metrics 的调用
-    # Removed is_crypto conditional check and call to get_crypto_metrics
-    # if is_crypto:
-    #     return get_crypto_metrics(ticker, end_date, period, limit)
-    
-    # Check cache first
-    # cache_key 不再需要区分加密货币，直接使用 ticker
-    # cache_key no longer needs to differentiate for crypto, uses ticker directly
+
     if cached_data := _cache.get_financial_metrics(ticker):
         # Filter cached data by date and limit
         filtered_data = [FinancialMetrics(**metric) for metric in cached_data if metric["report_period"] <= end_date]
@@ -322,6 +212,11 @@ def get_financial_metrics(
                 # Get financial data for this period if available
                 net_income = get_value_from_df(financial_data, 'Net Income', date)
                 total_revenue = get_value_from_df(financial_data, 'Total Revenue', date)
+                
+                # 过滤掉没有 net_income 的记录，类似于 search_line_items 中的过滤逻辑
+                # Filter out records without net_income, similar to the filtering logic in search_line_items
+                if net_income is None:
+                    continue
                 
                 # Balance sheet items
                 total_assets = get_value_from_df(balance_sheet, 'Total Assets', date)
@@ -437,121 +332,6 @@ def get_financial_metrics(
         print(f"Error fetching financial metrics for {ticker}: {str(e)}")
         return []
 
-# 移除了 get_crypto_metrics 函数，因为它专门用于获取加密货币的财务指标，现在不再支持
-# Removed get_crypto_metrics function as it was specific to fetching cryptocurrency financial metrics, which is no longer supported.
-# def get_crypto_metrics(
-#     ticker: str,
-#     end_date: str,
-#     period: str = "ttm",
-#     limit: int = 10
-# ) -> list[FinancialMetrics]:
-#     """Fetch cryptocurrency metrics from CoinGecko or other sources."""
-#     # Check cache first
-#     cache_key = f"crypto_{ticker}"
-#     if cached_data := _cache.get_financial_metrics(cache_key):
-#         # Filter cached data by date and limit
-#         filtered_data = [FinancialMetrics(**metric) for metric in cached_data if metric["report_period"] <= end_date]
-#         filtered_data.sort(key=lambda x: x.report_period, reverse=True)
-#         if filtered_data:
-#             return filtered_data[:limit]
-#     
-#     # Normalize ticker symbol
-#     coin_id = ticker.lower().replace("-usd", "").replace("/usd", "")
-#     
-#     try:
-#         # Get coin data from CoinGecko
-#         url = f"https://api.coingecko.com/api/v3/coins/{coin_id}"
-#         params = {
-#             "localization": "false",
-#             "tickers": "false",
-#             "market_data": "true",
-#             "community_data": "true",
-#             "developer_data": "true"
-#         }
-#         
-#         # Add API key if available
-#         api_keys = get_api_keys()
-#         if api_key := api_keys.get("coingecko"):
-#             params["x_cg_pro_api_key"] = api_key
-#         
-#         response = requests.get(url, params=params)
-#         
-#         if response.status_code == 200:
-#             data = response.json()
-#             market_data = data.get("market_data", {})
-#            
-#             report_date = datetime.now().strftime('%Y-%m-%d')
-#            
-#             # Create a financial metrics object with cryptocurrency-specific data
-#             metrics = FinancialMetrics(
-#                 ticker=ticker,
-#                 report_period=report_date,
-#                 period="ttm",
-#                 currency="USD",
-#                 market_cap=market_data.get("market_cap", {}).get("usd"),
-#                 enterprise_value=market_data.get("market_cap", {}).get("usd"),  # Same as market cap for crypto
-#                 price_to_earnings_ratio=None,  # Not applicable for most crypto
-#                 price_to_book_ratio=None,  # Not applicable for most crypto
-#                 price_to_sales_ratio=None,  # Not applicable for most crypto
-#                 enterprise_value_to_ebitda_ratio=None,  # Not applicable for most crypto
-#                 enterprise_value_to_revenue_ratio=None,  # Not applicable for most crypto
-#                 free_cash_flow_yield=None,  # Not applicable for most crypto
-#                 peg_ratio=None,  # Not applicable for most crypto
-#                 gross_margin=None,  # Not applicable for most crypto
-#                 operating_margin=None,  # Not applicable for most crypto
-#                 net_margin=None,  # Not applicable for most crypto
-#                 return_on_equity=None,  # Not applicable for most crypto
-#                 return_on_assets=None,  # Not applicable for most crypto
-#                 return_on_invested_capital=None,  # Not applicable for most crypto
-#                 asset_turnover=None,  # Not applicable for most crypto
-#                 inventory_turnover=None,  # Not applicable for most crypto
-#                 receivables_turnover=None,  # Not applicable for most crypto
-#                 days_sales_outstanding=None,  # Not applicable for most crypto
-#                 operating_cycle=None,  # Not applicable for most crypto
-#                 working_capital_turnover=None,  # Not applicable for most crypto
-#                 current_ratio=None,  # Not applicable for most crypto
-#                 quick_ratio=None,  # Not applicable for most crypto
-#                 cash_ratio=None,  # Not applicable for most crypto
-#                 operating_cash_flow_ratio=None,  # Not applicable for most crypto
-#                 debt_to_equity=None,  # Not applicable for most crypto
-#                 debt_to_assets=None,  # Not applicable for most crypto
-#                 interest_coverage=None,  # Not applicable for most crypto
-#                 revenue_growth=market_data.get("price_change_percentage_30d"),
-#                 earnings_growth=market_data.get("price_change_percentage_1y"),
-#                 book_value_growth=None,  # Not applicable for most crypto
-#                 earnings_per_share_growth=None,  # Not applicable for most crypto
-#                 free_cash_flow_growth=None,  # Not applicable for most crypto
-#                 operating_income_growth=None,  # Not applicable for most crypto
-#                 ebitda_growth=None,  # Not applicable for most crypto
-#                 payout_ratio=None,  # Not applicable for most crypto
-#                 earnings_per_share=None,  # Not applicable for most crypto
-#                 book_value_per_share=None,  # Not applicable for most crypto
-#                 free_cash_flow_per_share=None,  # Not applicable for most crypto
-#             )
-#            
-#             # Cache the result
-#             _cache.set_financial_metrics(cache_key, [metrics.model_dump()])
-#            
-#             return [metrics]
-#     except Exception as e:
-#         print(f"CoinGecko metrics error for {ticker}: {str(e)}")
-#    
-#     # Create an empty metrics object if no data was found
-#     empty_metrics = FinancialMetrics(
-#         ticker=ticker,
-#         report_period=datetime.now().strftime('%Y-%m-%d'),
-#         period="ttm",
-#         currency="USD",
-#         market_cap=None,
-#         enterprise_value=None,
-#         price_to_earnings_ratio=None,
-#         # ... all other fields default to None
-#     )
-#    
-#     return [empty_metrics]
-
-# is_crypto 参数已移除，此函数现在只搜索股票的财务项目
-# is_crypto parameter removed, this function now only searches financial line items for stocks
 def search_line_items(
     ticker: str,
     line_items: list[str],
@@ -630,6 +410,10 @@ def search_line_items(
                 "goodwill_and_intangible_assets": (None, None),  # Will calculate
                 "outstanding_shares": (None, None),  # Will get from info
                 "dividends_and_other_cash_distributions": ("Dividends Paid", cash_flow),
+                "earnings_per_share": (None, None),  # Will calculate from Net Income / Outstanding Shares
+                "book_value_per_share": (None, None),  # Will calculate from Shareholders Equity / Outstanding Shares
+                "current_assets": ("Current Assets", balance_sheet),
+                "current_liabilities": ("Current Liabilities", balance_sheet),
             }
             
             # Fill in values for each requested line item
@@ -689,9 +473,23 @@ def search_line_items(
                         total_equity = get_value_from_df(balance_sheet, "Stockholders Equity", date)
                         if total_debt and total_equity and total_equity > 0:
                             line_item_data[item] = total_debt / total_equity
+                    
+                    elif item == "earnings_per_share":
+                        net_income = get_value_from_df(income_stmt, "Net Income", date)
+                        shares_outstanding = info.get("sharesOutstanding")
+                        if net_income and shares_outstanding and shares_outstanding > 0:
+                            line_item_data[item] = net_income / shares_outstanding
+                    
+                    elif item == "book_value_per_share":
+                        shareholders_equity = get_value_from_df(balance_sheet, "Stockholders Equity", date)
+                        shares_outstanding = info.get("sharesOutstanding")
+                        if shareholders_equity and shares_outstanding and shares_outstanding > 0:
+                            line_item_data[item] = shareholders_equity / shares_outstanding
             
-            # Create the LineItem object
-            result_items.append(LineItem(**line_item_data))
+            # Create the LineItem object only if we have valid financial data
+            # Filter out entries where total_assets is None to prevent analysis issues
+            if "total_assets" not in line_items or line_item_data.get("total_assets") is not None:
+                result_items.append(LineItem(**line_item_data))
         
         return result_items
         
@@ -699,127 +497,7 @@ def search_line_items(
         print(f"Error fetching line items for {ticker}: {str(e)}")
         return []
 
-# 移除了 search_crypto_line_items 函数，因为它专门用于处理加密货币的财务项目，现在不再支持
-# Removed search_crypto_line_items function as it was specific to handling financial line items for cryptocurrencies, which is no longer supported.
-# def search_crypto_line_items(
-#     ticker: str,
-#     line_items: list[str],
-#     end_date: str,
-#     period: str = "ttm",
-#     limit: int = 10
-# ) -> list[LineItem]:
-#     """Create appropriate line items for cryptocurrencies."""
-#     # Normalize ticker symbol
-#     coin_id = ticker.lower().replace("-usd", "").replace("/usd", "")
-#    
-#     try:
-#         # Get coin data from CoinGecko
-#         url = f"https://api.coingecko.com/api/v3/coins/{coin_id}"
-#         params = {
-#             "localization": "false",
-#             "tickers": "false",
-#             "market_data": "true",
-#             "community_data": "true",
-#             "developer_data": "true"
-#         }
-#        
-#         # Add API key if available
-#         api_keys = get_api_keys()
-#         if api_key := api_keys.get("coingecko"):
-#             params["x_cg_pro_api_key"] = api_key
-#        
-#         response = requests.get(url, params=params)
-#        
-#         if response.status_code == 200:
-#             data = response.json()
-#             market_data = data.get("market_data", {})
-#            
-#             # Create a result for today
-#             result = LineItem(
-#                 ticker=ticker,
-#                 report_period=datetime.now().strftime('%Y-%m-%d'),
-#                 period=period,
-#                 currency="USD"
-#             )
-#            
-#             # Map requested line items to available crypto data
-#             for item in line_items:
-#                 if item == "revenue":
-#                     # For crypto, use trading volume as a proxy for revenue
-#                     result.revenue = market_data.get("total_volume", {}).get("usd")
-#                
-#                 elif item == "net_income":
-#                     # For crypto, there's no real net income, but can use market cap change
-#                     price_change_24h = market_data.get("price_change_24h", 0)
-#                     circulating_supply = market_data.get("circulating_supply", 0)
-#                     if price_change_24h and circulating_supply:
-#                         result.net_income = price_change_24h * circulating_supply
-#                
-#                 elif item == "outstanding_shares":
-#                     # Use circulating supply as equivalent to outstanding shares
-#                     result.outstanding_shares = market_data.get("circulating_supply")
-#                
-#                 elif item == "total_assets":
-#                     # Use market cap as a proxy for total assets
-#                     result.total_assets = market_data.get("market_cap", {}).get("usd")
-#                
-#                 elif item == "free_cash_flow":
-#                     # Not directly applicable for crypto
-#                     result.free_cash_flow = None
-#                
-#                 elif item == "capital_expenditure":
-#                     # Not applicable for crypto
-#                     result.capital_expenditure = None
-#                
-#                 elif item == "working_capital":
-#                     # Not applicable for crypto
-#                     result.working_capital = None
-#                
-#                 elif item == "research_and_development":
-#                     # Could use developer metrics as a very rough proxy
-#                     result.research_and_development = None
-#                
-#                 elif item == "total_liabilities":
-#                     # Not applicable for crypto
-#                     result.total_liabilities = None
-#                
-#                 elif item == "current_assets":
-#                     # Not applicable for crypto
-#                     result.current_assets = None
-#                
-#                 elif item == "current_liabilities":
-#                     # Not applicable for crypto
-#                     result.current_liabilities = None
-#                
-#                 elif item == "depreciation_and_amortization":
-#                     # Not applicable for crypto
-#                     result.depreciation_and_amortization = None
-#                
-#                 elif item == "dividends_and_other_cash_distributions":
-#                     # Not applicable for most crypto, though some have staking rewards
-#                     result.dividends_and_other_cash_distributions = None
-#                
-#                 elif item == "book_value_per_share":
-#                     # Not applicable for crypto
-#                     result.book_value_per_share = None
-#                
-#                 elif item == "goodwill_and_intangible_assets":
-#                     # Not applicable for crypto
-#                     result.goodwill_and_intangible_assets = None
-#                
-#             return [result]
-#     except Exception as e:
-#         print(f"Error getting crypto line items for {ticker}: {str(e)}")
-#    
-#     # Return empty result if we couldn't get data
-#     result = LineItem(
-#         ticker=ticker,
-#         report_period=datetime.now().strftime('%Y-%m-%d'),
-#         period=period,
-#         currency="USD"
-#     )
-#    
-#     return [result]
+
 
 def get_insider_trades(
     ticker: str,
@@ -929,14 +607,7 @@ def get_company_news(
     limit: int = 100
 ) -> list[CompanyNews]:
     """Fetch news articles for a ticker."""
-    # 移除了 is_crypto 条件判断和 get_crypto_news 的调用
-    # Removed is_crypto conditional check and call to get_crypto_news
-    # if is_crypto:
-    #     return get_crypto_news(ticker, end_date, start_date, limit)
-    
-    # Check cache first
-    # cache_key 不再需要区分加密货币，直接使用 ticker
-    # cache_key no longer needs to differentiate for crypto, uses ticker directly
+
     if cached_data := _cache.get_company_news(ticker):
         # Filter cached data by date range
         filtered_data = [CompanyNews(**news) for news in cached_data 
