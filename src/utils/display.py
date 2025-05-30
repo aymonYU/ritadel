@@ -255,3 +255,152 @@ def format_backtest_row(
             f"{Fore.RED}{bearish_count}{Style.RESET_ALL}",
             f"{Fore.BLUE}{neutral_count}{Style.RESET_ALL}",
         ]
+
+
+def print_analyst_signals_only(result: dict) -> None:
+    """
+    只打印投资专家agent的分析信号，不包含投资组合决策
+    Print only analyst signals from investment expert agents without portfolio decisions.
+
+    Args:
+        result (dict): Dictionary containing analyst signals for multiple tickers
+    """
+    analyst_signals = result.get("analyst_signals", {})
+    if not analyst_signals:
+        print(f"{Fore.RED}No analyst signals available{Style.RESET_ALL}")
+        return
+
+    # 获取所有股票代码 - Get all tickers
+    all_tickers = set()
+    for agent_signals in analyst_signals.values():
+        all_tickers.update(agent_signals.keys())
+    
+    if not all_tickers:
+        print(f"{Fore.RED}No ticker analysis found{Style.RESET_ALL}")
+        return
+
+    # Signal normalization function
+    def normalize_signal(signal_str):
+        """Normalize signals to English for consistent processing"""
+        if not signal_str:
+            return ""
+        signal_lower = signal_str.lower().strip()
+        # Handle Chinese signals
+        if signal_lower in ["看涨", "买入", "bullish", "buy"]:
+            return "bullish"
+        elif signal_lower in ["看跌", "卖出", "bearish", "sell"]:
+            return "bearish"
+        elif signal_lower in ["中性", "持有", "neutral", "hold"]:
+            return "neutral"
+        else:
+            return "neutral"  # default to neutral for unknown signals
+
+    # 为每个股票代码打印分析师信号 - Print analyst signals for each ticker
+    for ticker in sorted(all_tickers):
+        print(f"\n{Fore.WHITE}{Style.BRIGHT}Analysis for {Fore.CYAN}{ticker}{Style.RESET_ALL}")
+        print(f"{Fore.WHITE}{Style.BRIGHT}{'=' * 50}{Style.RESET_ALL}")
+
+        # 准备分析师信号表格数据 - Prepare analyst signals table data for this ticker
+        table_data = []
+        for agent, signals in analyst_signals.items():
+            if ticker not in signals:
+                continue
+
+            signal = signals[ticker]
+            agent_name = agent.replace("_agent", "").replace("_", " ").title()
+            signal_type = signal.get("signal", "").upper()
+
+            # Normalize signal for color coding
+            normalized_signal = normalize_signal(signal.get("signal", ""))
+            signal_color = {
+                "bullish": Fore.GREEN,
+                "bearish": Fore.RED,
+                "neutral": Fore.YELLOW,
+            }.get(normalized_signal, Fore.WHITE)
+
+            table_data.append(
+                [
+                    f"{Fore.CYAN}{agent_name}{Style.RESET_ALL}",
+                    f"{signal_color}{signal_type}{Style.RESET_ALL}",
+                    f"{Fore.YELLOW}{signal.get('confidence', 'N/A')}%{Style.RESET_ALL}",
+                    f"{Fore.WHITE}{signal.get('reasoning', 'No reasoning provided')[:100]}...{Style.RESET_ALL}" if len(signal.get('reasoning', '')) > 100 else f"{Fore.WHITE}{signal.get('reasoning', 'No reasoning provided')}{Style.RESET_ALL}"
+                ]
+            )
+
+        # 按照预定义顺序排列信号 - Sort the signals according to the predefined order
+        table_data = sort_analyst_signals(table_data)
+
+        print(f"\n{Fore.WHITE}{Style.BRIGHT}ANALYST SIGNALS:{Style.RESET_ALL} [{Fore.CYAN}{ticker}{Style.RESET_ALL}]")
+        if table_data:
+            print(
+                tabulate(
+                    table_data,
+                    headers=[f"{Fore.WHITE}Analyst", "Signal", "Confidence", "Reasoning"],
+                    tablefmt="grid",
+                    colalign=("left", "center", "right", "left"),
+                )
+            )
+        else:
+            print(f"{Fore.YELLOW}No analyst signals found for {ticker}{Style.RESET_ALL}")
+
+        # 打印详细推理（如果有的话） - Print detailed reasoning if available
+        print(f"\n{Fore.WHITE}{Style.BRIGHT}DETAILED ANALYSIS:{Style.RESET_ALL}")
+        for agent, signals in analyst_signals.items():
+            if ticker not in signals:
+                continue
+            
+            signal = signals[ticker]
+            agent_name = agent.replace("_agent", "").replace("_", " ").title()
+            reasoning = signal.get('reasoning', 'No detailed reasoning provided')
+            
+            print(f"\n{Fore.CYAN}{Style.BRIGHT}{agent_name}:{Style.RESET_ALL}")
+            print(f"{Fore.WHITE}{reasoning}{Style.RESET_ALL}")
+
+    # 打印分析师总结 - Print analyst summary
+    print(f"\n{Fore.WHITE}{Style.BRIGHT}ANALYST SUMMARY:{Style.RESET_ALL}")
+    summary_data = []
+    for ticker in sorted(all_tickers):
+        bullish_count = 0
+        bearish_count = 0
+        neutral_count = 0
+        
+        for agent, signals in analyst_signals.items():
+            if ticker in signals:
+                signal_type = normalize_signal(signals[ticker].get("signal", ""))
+                if signal_type == "bullish":
+                    bullish_count += 1
+                elif signal_type == "bearish":
+                    bearish_count += 1
+                elif signal_type == "neutral":
+                    neutral_count += 1
+        
+        # 确定总体情绪 - Determine overall sentiment
+        total_signals = bullish_count + bearish_count + neutral_count
+        if total_signals > 0:
+            if bullish_count > bearish_count and bullish_count > neutral_count:
+                overall = f"{Fore.GREEN}BULLISH{Style.RESET_ALL}"
+            elif bearish_count > bullish_count and bearish_count > neutral_count:
+                overall = f"{Fore.RED}BEARISH{Style.RESET_ALL}"
+            else:
+                overall = f"{Fore.YELLOW}MIXED{Style.RESET_ALL}"
+        else:
+            overall = f"{Fore.WHITE}NO SIGNALS{Style.RESET_ALL}"
+        
+        summary_data.append(
+            [
+                f"{Fore.CYAN}{ticker}{Style.RESET_ALL}",
+                f"{Fore.GREEN}{bullish_count}{Style.RESET_ALL}",
+                f"{Fore.RED}{bearish_count}{Style.RESET_ALL}",
+                f"{Fore.YELLOW}{neutral_count}{Style.RESET_ALL}",
+                overall
+            ]
+        )
+
+    print(
+        tabulate(
+            summary_data,
+            headers=[f"{Fore.WHITE}Ticker", "Bullish", "Bearish", "Neutral", "Overall"],
+            tablefmt="grid",
+            colalign=("left", "center", "center", "center", "center"),
+        )
+    )

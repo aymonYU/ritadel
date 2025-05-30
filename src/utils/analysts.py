@@ -19,56 +19,56 @@ ANALYST_CONFIG = {
         "agent_func": ben_graham_agent,
         "order": 0,
     },
-    "bill_ackman": {
-        "display_name": "Bill Ackman",
-        "agent_func": bill_ackman_agent,
-        "order": 1,
-    },
-    "cathie_wood": {
-        "display_name": "Cathie Wood",
-        "agent_func": cathie_wood_agent,
-        "order": 2,
-    },
+    # "bill_ackman": {
+    #     "display_name": "Bill Ackman",
+    #     "agent_func": bill_ackman_agent,
+    #     "order": 1,
+    # },
+    # "cathie_wood": {
+    #     "display_name": "Cathie Wood",
+    #     "agent_func": cathie_wood_agent,
+    #     "order": 2,
+    # },
     "charlie_munger": {
         "display_name": "Charlie Munger",
         "agent_func": charlie_munger_agent,
         "order": 3,
     },
-    "nancy_pelosi": {
-        "display_name": "Nancy Pelosi",
-        "agent_func": nancy_pelosi_agent,
-        "order": 4,
-    },
+    # "nancy_pelosi": {
+    #     "display_name": "Nancy Pelosi",
+    #     "agent_func": nancy_pelosi_agent,
+    #     "order": 4,
+    # },
     "warren_buffett": {
         "display_name": "Warren Buffett",
         "agent_func": warren_buffett_agent,
         "order": 5,
     },
-    "wsb": {
-        "display_name": "WallStreetBets",
-        "agent_func": wsb_agent,
-        "order": 6,
-    },
-    "technical_analyst": {
-        "display_name": "Technical Analyst",
-        "agent_func": technical_analyst_agent,
-        "order": 7,
-    },
-    "fundamentals_analyst": {
-        "display_name": "Fundamentals Analyst",
-        "agent_func": fundamentals_agent,
-        "order": 8,
-    },
-    "sentiment_analyst": {
-        "display_name": "Sentiment Analyst",
-        "agent_func": sentiment_agent,
-        "order": 9,
-    },
-    "valuation_analyst": {
-        "display_name": "Valuation Analyst",
-        "agent_func": valuation_agent,
-        "order": 10,
-    },
+    # "wsb": {
+    #     "display_name": "WallStreetBets",
+    #     "agent_func": wsb_agent,
+    #     "order": 6,
+    # },
+    # "technical_analyst": {
+    #     "display_name": "Technical Analyst",
+    #     "agent_func": technical_analyst_agent,
+    #     "order": 7,
+    # },
+    # "fundamentals_analyst": {
+    #     "display_name": "Fundamentals Analyst",
+    #     "agent_func": fundamentals_agent,
+    #     "order": 8,
+    # },
+    # "sentiment_analyst": {
+    #     "display_name": "Sentiment Analyst",
+    #     "agent_func": sentiment_agent,
+    #     "order": 9,
+    # },
+    # "valuation_analyst": {
+    #     "display_name": "Valuation Analyst",
+    #     "agent_func": valuation_agent,
+    #     "order": 10,
+    # },
 }
 
 # Derive ANALYST_ORDER from ANALYST_CONFIG for backwards compatibility

@@ -19,7 +19,7 @@ from agents.sentiment import sentiment_agent
 from agents.warren_buffett import warren_buffett_agent
 from graph.state import AgentState
 from agents.valuation import valuation_agent
-from utils.display import print_trading_output
+from utils.display import print_trading_output, print_analyst_signals_only
 from utils.analysts import ANALYST_ORDER, get_analyst_nodes
 from utils.progress import progress
 # 移除了 LLM_ORDER 和 get_model_info 的导入，因为模型固定为 GPT-4o
@@ -66,8 +66,8 @@ def run_hedge_fund(
     selected_analysts: list[str] = [],
 ):
     """
-    运行对冲基金分析系统的主函数
-    Main function to run the hedge fund analysis system
+    运行对冲基金分析系统的主函数 - 只运行投资专家agent
+    Main function to run the hedge fund analysis system - only run investment expert agents
     
     Args:
         tickers: 股票代码列表 - List of stock tickers
@@ -113,26 +113,9 @@ def run_hedge_fund(
         # Stop progress tracking
         progress.stop()
 
-        # 提取投资组合决策 - Extract the portfolio decisions
-        if "portfolio_decision" in result["data"]:
-            portfolio_decision = result["data"]["portfolio_decision"]
-        else:
-            # Handle the case where portfolio_decision might be missing
-            # Look for it in portfolio_management_agent output in messages
-            for message in reversed(result["messages"]):
-                if hasattr(message, "name") and message.name == "portfolio_management_agent":
-                    try:
-                        portfolio_decision = json.loads(message.content)
-                        break
-                    except:
-                        pass
-            else:
-                portfolio_decision = {}
-                print(f"{Fore.RED}Warning: Could not find portfolio decisions in output{Style.RESET_ALL}")
-        
-        # Return result with analyst signals for further processing
+        # 只返回分析师信号，不处理投资组合决策
+        # Only return analyst signals, do not process portfolio decisions
         return {
-            "decisions": portfolio_decision,
             "analyst_signals": result["data"]["analyst_signals"],
         }
     except Exception as e:
@@ -176,22 +159,26 @@ def create_workflow(selected_analysts=None):
             node_name, node_func = analyst_nodes[analyst_key]
             workflow.add_node(node_name, node_func)
             workflow.add_edge("start_node", node_name)
+            # 直接将分析师连接到END，跳过风险管理和投资组合管理
+            # Connect analysts directly to END, skipping risk and portfolio management
+            workflow.add_edge(node_name, END)
         else:
             print(f"{Fore.RED}Warning: Analyst {analyst_key} not found in configuration{Style.RESET_ALL}")
     
-    # 始终添加风险管理和投资组合管理 - Always add risk and portfolio management
-    workflow.add_node("risk_management_agent", risk_management_agent)
-    workflow.add_node("portfolio_management_agent", portfolio_management_agent)
+    # 移除风险管理和投资组合管理节点
+    # Remove risk management and portfolio management nodes
+    # workflow.add_node("risk_management_agent", risk_management_agent)
+    # workflow.add_node("portfolio_management_agent", portfolio_management_agent)
     
-    # 将所有分析师连接到风险管理 - Connect all analysts to risk management
-    for analyst_key in selected_analysts:
-        if analyst_key in analyst_nodes:
-            node_name = analyst_nodes[analyst_key][0]
-            workflow.add_edge(node_name, "risk_management_agent")
-    
-    # 将风险管理连接到投资组合管理 - Connect risk management to portfolio management
-    workflow.add_edge("risk_management_agent", "portfolio_management_agent")
-    workflow.add_edge("portfolio_management_agent", END)
+    # 移除连接到风险管理和投资组合管理的边
+    # Remove edges connecting to risk and portfolio management
+    # for analyst_key in selected_analysts:
+    #     if analyst_key in analyst_nodes:
+    #         node_name = analyst_nodes[analyst_key][0]
+    #         workflow.add_edge(node_name, "risk_management_agent")
+    # 
+    # workflow.add_edge("risk_management_agent", "portfolio_management_agent")
+    # workflow.add_edge("portfolio_management_agent", END)
 
     workflow.set_entry_point("start_node")
     return workflow
@@ -216,8 +203,6 @@ def run_all_analysts_with_round_table(tickers, start_date, end_date, portfolio, 
     
     # 运行包含所有分析师的常规对冲基金分析
     # Run the regular hedge fund with all analysts
-    # 调用 run_hedge_fund 时不再传递 model_name 和 model_provider
-    # model_name and model_provider are no longer passed when calling run_hedge_fund
     result = run_hedge_fund(
         tickers=tickers,
         start_date=start_date,
@@ -228,8 +213,6 @@ def run_all_analysts_with_round_table(tickers, start_date, end_date, portfolio, 
     )
     
     # 运行圆桌讨论 - Run the round table discussion
-    # 调用 run_round_table 时不再传递 model_name 和 model_provider
-    # model_name and model_provider are no longer passed when calling run_round_table
     from round_table import run_round_table # 确保此导入在文件顶部 (Ensure this import is at the top of the file)
     round_table_results = run_round_table(
         data={
@@ -348,7 +331,7 @@ if __name__ == "__main__":
             portfolio=portfolio,
             show_reasoning=args.show_reasoning,
         )
-        print_trading_output(result)
+        print_analyst_signals_only(result)
     else:
         # Regular flow - prompt user to select analysts
         selected_analysts = None
@@ -394,4 +377,5 @@ if __name__ == "__main__":
             show_reasoning=args.show_reasoning,
             selected_analysts=selected_analysts,
         )
-        print_trading_output(result)
+        print(result)
+        # print_analyst_signals_only(result)
