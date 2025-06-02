@@ -215,8 +215,9 @@ export default function Analysis() {
     // Step-specific validation
     switch (activeStep) {
       case 0: // Select Stocks step
-        // For the first step, only ticker is required
-        valid = tickers.trim() !== '';
+        // For the first step, ticker is required and should not exceed 3 stocks
+        const currentTickerList = parseTickerInput(tickers);
+        valid = tickers.trim() !== '' && currentTickerList.length <= 3;
         break;
 
       case 1: // Choose Analysts step
@@ -235,10 +236,16 @@ export default function Analysis() {
     // Skip full validation during intermediate steps
     // We only need to validate the current step's fields
 
-    // For first step, just check ticker input
+    // For first step, check ticker input and count
     if (activeStep === 0) {
       if (!tickers.trim()) {
         setAnalysisError("请输入至少一个股票代码");
+        return;
+      }
+      
+      const currentTickerList = parseTickerInput(tickers);
+      if (currentTickerList.length > 3) {
+        setAnalysisError("请节省一点token消化，最多选择3个股票");
         return;
       }
     }
@@ -425,6 +432,12 @@ export default function Analysis() {
       return false;
     }
 
+    const currentTickerList = parseTickerInput(tickers);
+    if (currentTickerList.length > 3) {
+      setAnalysisError("请节省一点token消化，最多选择3个股票");
+      return false;
+    }
+
     if (selectedAnalysts.length === 0) {
       setAnalysisError("请选择至少一个分析师");
       return false;
@@ -449,7 +462,7 @@ export default function Analysis() {
   const steps = [
     {
       label: '输入股票代码',
-      description: '输入您想要分析的股票代码',
+      description: '输入您想要分析的股票代码（最多3个）',
       content: (
         <Fade in timeout={800}>
           <Box sx={{ mt: 2 }}>
@@ -507,7 +520,7 @@ export default function Analysis() {
                 onChange={(e) => setTickers(e.target.value)}
                 onFocus={() => setTickerInputFocused(true)}
                 onBlur={() => setTickerInputFocused(false)}
-                helperText="输入股票代码，用逗号或空格分隔"
+                helperText="输入股票代码，用逗号或空格分隔（最多3个）"
                 InputProps={{
                   sx: {
                     bgcolor: colors.inputBackground,
@@ -552,6 +565,39 @@ export default function Analysis() {
               />
             </Box>
 
+            {/* 股票数量限制提示 */}
+            {currentTickers.length > 0 && (
+              <Slide direction="up" in timeout={300}>
+                <Box sx={{ mb: 2 }}>
+                  <Alert 
+                    severity={currentTickers.length > 3 ? "error" : currentTickers.length === 3 ? "warning" : "info"}
+                    sx={{ 
+                      borderRadius: 2,
+                      '& .MuiAlert-message': {
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1
+                      }
+                    }}
+                  >
+                    {currentTickers.length > 3 ? (
+                      <>
+                        <strong>请节省一点token消化！</strong> 最多只能选择3个股票，当前已选择 {currentTickers.length} 个
+                      </>
+                    ) : currentTickers.length === 3 ? (
+                      <>
+                        已达到最大选择数量（3个股票）
+                      </>
+                    ) : (
+                      <>
+                        已选择 {currentTickers.length} 个股票，还可以选择 {3 - currentTickers.length} 个
+                      </>
+                    )}
+                  </Alert>
+                </Box>
+              </Slide>
+            )}
+
             {/* 当前输入的股票代码展示 */}
             {currentTickers.length > 0 && (
               <Slide direction="up" in timeout={500}>
@@ -572,10 +618,10 @@ export default function Analysis() {
                         width: 8,
                         height: 8,
                         borderRadius: '50%',
-                        bgcolor: 'primary.main',
+                        bgcolor: currentTickers.length > 3 ? 'error.main' : 'primary.main',
                         animation: 'pulse 2s infinite'
                       }} />
-                      已输入股票 ({currentTickers.length} 个)
+                      已输入股票 ({currentTickers.length}/3 个)
                     </Typography>
                     <Button
                       size="small"
@@ -594,11 +640,12 @@ export default function Analysis() {
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                     {currentTickers.map((ticker, index) => {
                       const stockInfo = stockSuggestions.find(s => s.symbol === ticker);
+                      const isOverLimit = index >= 3;
                       return (
                         <Fade in timeout={300 + index * 100} key={ticker}>
                           <Chip
                             label={stockInfo ? `${ticker} ${stockInfo.name}` : ticker}
-                            color="primary"
+                            color={isOverLimit ? "error" : "primary"}
                             variant="filled"
                             onDelete={() => {
                               const newTickers = currentTickers.filter(t => t !== ticker);
@@ -611,22 +658,28 @@ export default function Analysis() {
                               animation: 'fadeInUp 0.5s ease-out',
                               animationDelay: `${index * 0.1}s`,
                               animationFillMode: 'both',
-                              background: stockInfo ?
-                                `linear-gradient(135deg, ${categoryColors[stockInfo.category]}20, ${categoryColors[stockInfo.category]}40)` :
-                                'linear-gradient(135deg, #2196f320, #2196f340)',
-                              border: stockInfo ?
-                                `1px solid ${categoryColors[stockInfo.category]}60` :
-                                '1px solid #2196f360',
+                              background: isOverLimit ? 
+                                'linear-gradient(135deg, #f4433620, #f4433640)' :
+                                (stockInfo ?
+                                  `linear-gradient(135deg, ${categoryColors[stockInfo.category]}20, ${categoryColors[stockInfo.category]}40)` :
+                                  'linear-gradient(135deg, #2196f320, #2196f340)'),
+                              border: isOverLimit ?
+                                '1px solid #f4433660' :
+                                (stockInfo ?
+                                  `1px solid ${categoryColors[stockInfo.category]}60` :
+                                  '1px solid #2196f360'),
                               transition: 'all 0.3s',
                               '&:hover': {
                                 transform: 'translateY(-2px)',
                                 boxShadow: 3,
-                                background: stockInfo ?
-                                  `linear-gradient(135deg, ${categoryColors[stockInfo.category]}30, ${categoryColors[stockInfo.category]}50)` :
-                                  'linear-gradient(135deg, #2196f330, #2196f350)',
+                                background: isOverLimit ?
+                                  'linear-gradient(135deg, #f4433630, #f4433650)' :
+                                  (stockInfo ?
+                                    `linear-gradient(135deg, ${categoryColors[stockInfo.category]}30, ${categoryColors[stockInfo.category]}50)` :
+                                    'linear-gradient(135deg, #2196f330, #2196f350)'),
                               },
                               '& .MuiChip-deleteIcon': {
-                                color: stockInfo ? categoryColors[stockInfo.category] : '#2196f3',
+                                color: isOverLimit ? '#f44336' : (stockInfo ? categoryColors[stockInfo.category] : '#2196f3'),
                                 '&:hover': {
                                   color: '#f44336'
                                 }
@@ -646,6 +699,14 @@ export default function Analysis() {
               <Typography variant="subtitle2" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Analytics fontSize="small" />
                 热门股票建议
+                {currentTickers.length >= 3 && (
+                  <Chip 
+                    label="已达上限" 
+                    size="small" 
+                    color="warning"
+                    sx={{ fontSize: '0.7rem', height: 20 }}
+                  />
+                )}
               </Typography>
 
               {/* 按分类展示股票建议 */}
@@ -677,31 +738,33 @@ export default function Analysis() {
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                         {stocks.slice(0, 3).map((stock, index) => {
                           const isAlreadySelected = parseTickerInput(tickers).includes(stock.symbol);
+                          const isAtLimit = currentTickers.length >= 3;
+                          const cannotAdd = isAlreadySelected || isAtLimit;
+                          
                           return (
                             <Chip
                               key={stock.symbol}
                               label={`${stock.symbol} ${stock.name}`}
                               size="small"
-                              clickable={!isAlreadySelected}
-                              disabled={isAlreadySelected}
+                              clickable={!cannotAdd}
+                              disabled={cannotAdd}
                               onClick={() => {
-                                if (!isAlreadySelected) {
+                                if (!cannotAdd) {
                                   setTickers(prev => (prev ? `${prev}, ${stock.symbol}` : stock.symbol));
                                 }
                               }}
                               sx={{
                                 fontSize: '0.75rem',
                                 height: 24,
-                                background: isAlreadySelected ?
-                                  // (isDarkMode ? 'grey.700' : 'grey.300') 
+                                background: cannotAdd ?
                                   'rgba(255,255,255,0.05)':
                                   `${categoryColors[category]}15`,
-                                color: isAlreadySelected ?
+                                color: cannotAdd ?
                                   (isDarkMode ? 'grey.400' : 'grey.600') :
                                   categoryColors[category],
                                 border: `1px solid ${categoryColors[category]}30`,
                                 transition: 'all 0.3s',
-                                '&:hover': !isAlreadySelected ? {
+                                '&:hover': !cannotAdd ? {
                                   transform: 'translateY(-1px)',
                                   boxShadow: 1,
                                   bgcolor: `${categoryColors[category]}25`,

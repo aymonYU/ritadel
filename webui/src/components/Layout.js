@@ -113,7 +113,7 @@ export default function Layout({ children }) {
           fontSize: '1.1rem',
         }}
       >
-        AI投资助手
+        AI价值投资助手
       </Typography>
       <Typography 
         variant="body2" 
@@ -229,7 +229,7 @@ export default function Layout({ children }) {
           fontSize: '0.7rem',
           textShadow: '0 1px 2px rgba(0,0,0,0.3)',
         }}>
-          © 2024 AI投资助手
+          © 2025 AI价值投资助手
         </Typography>
       </Box>
     </Box>
