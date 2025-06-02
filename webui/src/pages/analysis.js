@@ -17,31 +17,27 @@ const modelOptions = [
 ];
 
 const analystOptions = [
-  { label: 'Warren Buffett', value: 'warren_buffett_agent', description: 'Analyzes quality businesses with strong fundamentals and reasonable prices' },
-  { label: 'Charlie Munger', value: 'charlie_munger_agent', description: 'Evaluates companies using mental models and considers moats and management quality' },
-  { label: 'Ben Graham', value: 'ben_graham_agent', description: 'Focuses on deep value stocks trading below intrinsic value with margin of safety' },
-  { label: 'Bill Ackman', value: 'bill_ackman_agent', description: 'Identifies high-quality businesses with long-term growth and activist potential' },
-  { label: 'Cathie Wood', value: 'cathie_wood_agent', description: 'Specializes in disruptive innovation and high-growth technology companies' },
-  { label: 'Nancy Pelosi', value: 'nancy_pelosi_agent', description: 'Analyzes stocks with policy/regulatory advantages and asymmetric information opportunities' },
-  { label: 'WSB', value: 'wsb_agent', description: 'Identifies meme stocks, short squeeze candidates, and momentum plays' },
-  { label: 'Technical Analysis', value: 'technical_analyst_agent', description: 'Uses price patterns, trends, and indicators to generate trading signals' },
-  { label: 'Fundamental Analysis', value: 'fundamentals_agent', description: 'Examines company fundamentals like profitability, growth, and financial health' },
-  { label: 'Sentiment Analysis', value: 'sentiment_agent', description: 'Analyzes market sentiment from news and insider trading' },
-  { label: 'Valuation Analysis', value: 'valuation_agent', description: 'Calculates intrinsic value using multiple valuation methodologies' },
-  { label: 'Risk Management', value: 'risk_management_agent', description: 'Controls position sizing based on portfolio risk factors' },
+  { label: 'Warren Buffett (巴菲特)', value: 'warren_buffett_agent', description: '分析具有强大基本面和合理价格的优质企业' },
+  { label: 'Charlie Munger (芒格)', value: 'charlie_munger_agent', description: '使用心理模型评估公司，并考虑护城河和管理质量' },
+  { label: 'Ben Graham (格雷厄姆)', value: 'ben_graham_agent', description: '专注于深度价值股票，交易价格低于内在价值，具有安全边际' },
+  { label: 'Bill Ackman (艾克曼)', value: 'bill_ackman_agent', description: '识别具有长期增长和激进潜力的优质企业' },
+  { label: 'Cathie Wood (木头姐)', value: 'cathie_wood_agent', description: '专注于颠覆性创新和高速增长的技术公司' },
+  { label: 'Peter Lynch (彼得·林奇)', value: 'peter_lynch_agent', description: '专注于具有强大基本面和增长潜力的公司' },
+  { label: 'Phil Fisher (菲尔·费舍尔)', value: 'phil_fisher_agent', description: '识别具有强大竞争优势和增长潜力的公司' },
+
+  
+  // { label: 'WSB', value: 'wsb_agent', description: 'Identifies meme stocks, short squeeze candidates, and momentum plays' },
+  // { label: 'Technical Analysis', value: 'technical_analyst_agent', description: 'Uses price patterns, trends, and indicators to generate trading signals' },
+  // { label: 'Fundamental Analysis', value: 'fundamentals_agent', description: 'Examines company fundamentals like profitability, growth, and financial health' },
+  // { label: 'Sentiment Analysis', value: 'sentiment_agent', description: 'Analyzes market sentiment from news and insider trading' },
+  // { label: 'Valuation Analysis', value: 'valuation_agent', description: 'Calculates intrinsic value using multiple valuation methodologies' },
+  // { label: 'Risk Management', value: 'risk_management_agent', description: 'Controls position sizing based on portfolio risk factors' },
 ];
 
 export default function Analysis() {
   const [activeStep, setActiveStep] = useState(0);
   const [tickers, setTickers] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [selectedModel, setSelectedModel] = useState(null);
   const [selectedAnalysts, setSelectedAnalysts] = useState([]);
-  const [initialCash, setInitialCash] = useState(100000);
-  const [showReasoning, setShowReasoning] = useState(true);
-  const [runRoundTable, setRunRoundTable] = useState(false);
-  const [isCrypto, setIsCrypto] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState(null);
   const [progress, setProgress] = useState({});
@@ -55,20 +51,11 @@ export default function Analysis() {
     switch (activeStep) {
       case 0: // Select Stocks step
         // For the first step, only ticker is required
-        valid = tickers.trim() !== '' && 
-               // Optional date validation
-               (!startDate || isValidDate(startDate)) && 
-               (!endDate || isValidDate(endDate)) && 
-               (!(startDate && endDate) || new Date(startDate) <= new Date(endDate));
+        valid = tickers.trim() !== '';
         break;
         
-      case 1: // Select LLM Model step
-        // For the second step, model must be selected
-        valid = selectedModel !== null;
-        break;
-        
-      case 2: // Choose Analysts step
-        // For the third step, at least one analyst must be selected
+      case 1: // Choose Analysts step
+        // For the second step, at least one analyst must be selected
         valid = selectedAnalysts.length > 0;
         break;
         
@@ -77,7 +64,7 @@ export default function Analysis() {
     }
     
     setIsFormValid(valid);
-  }, [activeStep, tickers, selectedModel, selectedAnalysts, startDate, endDate]);
+  }, [activeStep, tickers, selectedAnalysts]);
 
   const handleNext = () => {
     // Skip full validation during intermediate steps
@@ -89,34 +76,10 @@ export default function Analysis() {
         setAnalysisError("Please enter at least one ticker symbol");
         return;
       }
-      
-      // Only do date validation if dates were entered
-      if (startDate && !isValidDate(startDate)) {
-        setAnalysisError("Please enter a valid start date (YYYY-MM-DD)");
-        return;
-      }
-      
-      if (endDate && !isValidDate(endDate)) {
-        setAnalysisError("Please enter a valid end date (YYYY-MM-DD)");
-        return;
-      }
-      
-      if (startDate && endDate && new Date(startDate) > new Date(endDate)) {
-        setAnalysisError("Start date cannot be after end date");
-        return;
-      }
     }
     
-    // For second step, just check model selection
+    // For second step, check analyst selection
     else if (activeStep === 1) {
-      if (!selectedModel) {
-        setAnalysisError("Please select a model");
-        return;
-      }
-    }
-    
-    // For third step, check analyst selection
-    else if (activeStep === 2) {
       if (selectedAnalysts.length === 0) {
         setAnalysisError("Please select at least one analyst");
         return;
@@ -145,7 +108,6 @@ export default function Analysis() {
       // Log the request details to console
       console.log("Starting analysis:", {
         tickers: tickers,
-        modelName: selectedModel?.value,
         analysts: selectedAnalysts.map(a => a.value)
       });
       
@@ -169,14 +131,7 @@ export default function Analysis() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           tickers: tickers,
-          startDate: startDate,
-          endDate: endDate,
-          modelName: selectedModel.value,
           selectedAnalysts: selectedAnalysts.map(a => a.value),
-          initialCash: initialCash,
-          isCrypto: isCrypto,
-          showReasoning: showReasoning,
-          runRoundTable: runRoundTable
         })
       })
       .then(response => {
@@ -192,46 +147,30 @@ export default function Analysis() {
         setTimeout(() => {
           setIsAnalyzing(false);
           
-          // Manually create results if the API response isn't structured correctly
-          const formattedResults = {
-            tickers: ticker_list,
-            date: new Date().toISOString().split('T')[0],
-            signals: {}
-          };
-          
           if (data && data.ticker_analyses) {
-            // Use API response
-            Object.keys(data.ticker_analyses).forEach(ticker => {
-              const analysis = data.ticker_analyses[ticker];
-              formattedResults.signals[ticker] = {
-                overallSignal: analysis.signals.overall || 'neutral',
-                confidence: analysis.signals.confidence || 60,
-                analysts: selectedAnalysts.map(analyst => ({
-                  name: analyst.label,
-                  signal: analysis.signals[analyst.value] || 'neutral',
-                  confidence: analysis.signals[`${analyst.value}_confidence`] || 60,
-                  reasoning: analysis.reasoning[analyst.value] || 'No reasoning provided'
-                }))
-              };
-            });
+            // 直接使用API返回的数据，不进行格式转换
+            // Use API response data directly without format conversion
+            setAnalysisResults(data);
           } else {
-            // Create fake results as fallback
+            // Create fallback data in the new array format
+            const fallbackData = {
+              ticker_analyses: {}
+            };
+            
+            const ticker_list = tickers.split(',').map(t => t.trim());
             ticker_list.forEach(ticker => {
-              formattedResults.signals[ticker] = {
-                overallSignal: 'neutral',
-                confidence: 70,
-                analysts: selectedAnalysts.map(analyst => ({
-                  name: analyst.label,
-                  signal: Math.random() > 0.5 ? 'bullish' : 'bearish',
-                  confidence: 70,
-                  reasoning: `Analysis for ${ticker} by ${analyst.label} (fallback data)`
-                }))
-              };
+              fallbackData.ticker_analyses[ticker] = selectedAnalysts.map(analyst => ({
+                agent_name: analyst.value,
+                signal: Math.random() > 0.5 ? '买入' : '卖出',
+                confidence: Math.round(Math.random() * 40 + 60), // 60-100
+                reasoning: `Fallback analysis for ${ticker} by ${analyst.label}`
+              }));
             });
+            
+            setAnalysisResults(fallbackData);
           }
           
-          setAnalysisResults(formattedResults);
-          setActiveStep(3); // Move to results step
+          setActiveStep(2); // Move to results step
         }, 3000);
       })
       .catch(error => {
@@ -263,7 +202,7 @@ export default function Analysis() {
           
           setIsAnalyzing(false);
           setAnalysisResults(fallbackResults);
-          setActiveStep(3);
+          setActiveStep(2);
         }, 5000);
       });
     }
@@ -283,31 +222,8 @@ export default function Analysis() {
       return false;
     }
     
-    if (!selectedModel) {
-      setAnalysisError("Please select a model");
-      return false;
-    }
-    
     if (selectedAnalysts.length === 0) {
       setAnalysisError("Please select at least one analyst");
-      return false;
-    }
-    
-    // Date validation is no longer required
-    // We'll keep very basic validation only if dates are provided
-    if (startDate && !isValidDate(startDate)) {
-      setAnalysisError("Please enter a valid start date (YYYY-MM-DD)");
-      return false;
-    }
-    
-    if (endDate && !isValidDate(endDate)) {
-      setAnalysisError("Please enter a valid end date (YYYY-MM-DD)");
-      return false;
-    }
-    
-    // Only validate date order if both are provided
-    if (startDate && endDate && new Date(startDate) > new Date(endDate)) {
-      setAnalysisError("Start date cannot be after end date");
       return false;
     }
     
@@ -330,7 +246,7 @@ export default function Analysis() {
   const steps = [
     {
       label: 'Select Stocks',
-      description: 'Enter ticker symbols and date range',
+      description: 'Enter ticker symbols',
       content: (
         <Box sx={{ mt: 2 }}>
           <TextField
@@ -342,63 +258,6 @@ export default function Analysis() {
             onChange={(e) => setTickers(e.target.value)}
             helperText="Enter comma-separated ticker symbols"
           />
-          <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
-            <TextField
-              label="Start Date (Optional)"
-              fullWidth
-              margin="normal"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              placeholder={defaults.startDate}
-              helperText={`Leave blank to use default (${defaults.startDate})`}
-            />
-            <TextField
-              label="End Date (Optional)"
-              fullWidth
-              margin="normal"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              placeholder={defaults.endDate}
-              helperText={`Leave blank to use default (${defaults.endDate})`}
-            />
-          </Box>
-          <FormGroup sx={{ mt: 2 }}>
-            <FormControlLabel
-              control={
-                <Checkbox 
-                  checked={isCrypto}
-                  onChange={(e) => setIsCrypto(e.target.checked)}
-                />
-              }
-              label="Analyze cryptocurrency instead of stocks"
-            />
-          </FormGroup>
-        </Box>
-      ),
-    },
-    {
-      label: 'Select LLM Model',
-      description: 'Choose an AI model for analysis',
-      content: (
-        <Box sx={{ mt: 2 }}>
-          <Autocomplete
-            options={modelOptions}
-            value={selectedModel}
-            onChange={(event, newValue) => {
-              setSelectedModel(newValue);
-            }}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                label="LLM Model"
-                fullWidth
-                margin="normal"
-              />
-            )}
-          />
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-            Select a language model for analysis. Different models offer various tradeoffs between speed, cost, and analysis quality.
-          </Typography>
         </Box>
       ),
     },
@@ -472,42 +331,6 @@ export default function Analysis() {
               </Grid>
             ))}
           </Grid>
-          
-          <Divider sx={{ my: 3 }} />
-          
-          <TextField
-            label="Initial Portfolio Cash"
-            type="number"
-            fullWidth
-            margin="normal"
-            value={initialCash}
-            onChange={(e) => setInitialCash(Number(e.target.value))}
-            InputProps={{
-              startAdornment: '$',
-            }}
-          />
-          
-          <FormGroup sx={{ mt: 2 }}>
-            <FormControlLabel
-              control={
-                <Checkbox 
-                  checked={showReasoning}
-                  onChange={(e) => setShowReasoning(e.target.checked)}
-                />
-              }
-              label="Show detailed reasoning from each analyst"
-            />
-            
-            <FormControlLabel
-              control={
-                <Checkbox 
-                  checked={runRoundTable}
-                  onChange={(e) => setRunRoundTable(e.target.checked)}
-                />
-              }
-              label="Run round table discussion after analysis"
-            />
-          </FormGroup>
         </Box>
       ),
     },
@@ -516,10 +339,10 @@ export default function Analysis() {
   return (
     <Box>
       <Typography variant="h4" component="h1" gutterBottom>
-        Stock Analysis
+        股票分析
       </Typography>
       
-      {!isAnalyzing && activeStep < 3 ? (
+      {!isAnalyzing && activeStep < 2 ? (
         <Card>
           <CardContent>
             <Stepper activeStep={activeStep} orientation="vertical">
@@ -558,7 +381,7 @@ export default function Analysis() {
             </Stepper>
           </CardContent>
         </Card>
-      ) : activeStep === 3 && analysisResults ? (
+      ) : activeStep === 2 && analysisResults ? (
         <AnalysisResults 
           results={analysisResults} 
           onNewAnalysis={handleReset} 
@@ -569,11 +392,14 @@ export default function Analysis() {
           tickers={tickers.split(',').map(t => t.trim())} 
           analysts={selectedAnalysts}
           error={analysisError}
-          onCancel={() => {
-            setIsAnalyzing(false);
-            setProgress({});
-          }}
+          onCancel={handleReset}
         />
+      )}
+      
+      {analysisError && (
+        <Alert severity="error" sx={{ mt: 2 }}>
+          {analysisError}
+        </Alert>
       )}
     </Box>
   );
@@ -726,7 +552,7 @@ function AnalysisResults({ results, onNewAnalysis }) {
     <Box>
       <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Typography variant="h6">
-          Analysis Results ({results.date})
+          Analysis Results ({new Date().toISOString().split('T')[0]})
         </Typography>
         <Button 
           variant="outlined" 
@@ -736,99 +562,32 @@ function AnalysisResults({ results, onNewAnalysis }) {
         </Button>
       </Box>
       
-      <Grid container spacing={3}>
-        {results.tickers.map(ticker => {
-          const tickerData = results.signals[ticker];
-          const signalColor = 
-            tickerData.overallSignal === 'bullish' ? 'success.main' :
-            tickerData.overallSignal === 'bearish' ? 'error.main' : 'warning.main';
-            
-          return (
-            <Grid item xs={12} md={6} key={ticker}>
-              <Card>
-                <CardContent>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                    <Typography variant="h6">{ticker}</Typography>
-                    <Chip 
-                      label={tickerData.overallSignal.toUpperCase()} 
-                      sx={{ 
-                        bgcolor: signalColor, 
-                        color: 'white',
-                        fontWeight: 'bold'
-                      }} 
-                    />
-                  </Box>
-                  
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-                    <Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>
-                      Confidence:
-                    </Typography>
-                    <Box sx={{ flexGrow: 1, mr: 1 }}>
-                      <LinearProgress 
-                        variant="determinate" 
-                        value={tickerData.confidence}
-                        color={
-                          tickerData.overallSignal === 'bullish' ? 'success' :
-                          tickerData.overallSignal === 'bearish' ? 'error' : 'warning'
-                        }
-                      />
-                    </Box>
-                    <Typography variant="body2">
-                      {tickerData.confidence}%
-                    </Typography>
-                  </Box>
-                  
-                  <Typography variant="subtitle1" gutterBottom>
-                    Analyst Signals
-                  </Typography>
-                  
-                  <Box sx={{ maxHeight: 300, overflowY: 'auto', pr: 1 }}>
-                    {tickerData.analysts.map((analyst, index) => {
-                      const analystSignalColor = 
-                        analyst.signal === 'bullish' ? 'success.main' :
-                        analyst.signal === 'bearish' ? 'error.main' : 'warning.main';
-                        
-                      return (
-                        <Box 
-                          key={index} 
-                          sx={{ 
-                            p: 1.5, 
-                            borderRadius: 1, 
-                            mb: 1,
-                            bgcolor: 'background.paper',
-                            border: '1px solid',
-                            borderColor: 'divider',
-                          }}
-                        >
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                            <Typography variant="subtitle2">
-                              {analyst.name}
-                            </Typography>
-                            <Chip 
-                              label={analyst.signal.toUpperCase()} 
-                              size="small"
-                              sx={{ 
-                                bgcolor: analystSignalColor, 
-                                color: 'white',
-                                fontWeight: 'bold',
-                                fontSize: '0.7rem',
-                              }} 
-                            />
-                          </Box>
-                          
-                          <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.85rem' }}>
-                            {analyst.reasoning}
-                          </Typography>
-                        </Box>
-                      );
-                    })}
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-          );
-        })}
-      </Grid>
+      {/* 原始数据 - Raw Data */}
+      <Card>
+        <CardContent>
+          <Typography variant="h6" gutterBottom>
+            Raw Analysis Data (JSON Format)
+          </Typography>
+          <Box sx={{ 
+            backgroundColor: (theme) => theme.palette.mode === 'dark' ? '#1e1e1e' : '#f5f5f5',
+            p: 2, 
+            borderRadius: 1, 
+            maxHeight: '600px', 
+            overflowY: 'auto',
+            fontFamily: 'monospace'
+          }}>
+            <pre style={{ 
+              margin: 0, 
+              whiteSpace: 'pre-wrap', 
+              fontSize: '0.875rem',
+              lineHeight: 1.4,
+              color: (theme) => theme.palette.mode === 'dark' ? '#fff' : 'inherit'
+            }}>
+              {JSON.stringify(results, null, 2)}
+            </pre>
+          </Box>
+        </CardContent>
+      </Card>
     </Box>
   );
 }

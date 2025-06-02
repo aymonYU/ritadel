@@ -18,12 +18,12 @@ export default function Layout({ children }) {
   };
 
   const menuItems = [
-    { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
-    { text: 'Analysis', icon: <AssessmentIcon />, path: '/analysis' },
-    { text: 'Backtest', icon: <ChartIcon />, path: '/backtest' },
-    { text: 'Round Table', icon: <PeopleIcon />, path: '/round-table' },
-    { text: 'History', icon: <HistoryIcon />, path: '/history' },
-    { text: 'Settings', icon: <SettingsIcon />, path: '/settings' },
+    // { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
+    { text: '股票分析', icon: <AssessmentIcon />, path: '/analysis' },
+    { text: '回测', icon: <ChartIcon />, path: '/backtest' },
+    { text: '圆桌', icon: <PeopleIcon />, path: '/round-table' },
+    { text: '历史', icon: <HistoryIcon />, path: '/history' },
+    { text: '设置', icon: <SettingsIcon />, path: '/settings' },
   ];
 
   const drawer = (

@@ -291,11 +291,10 @@ def start_api_server(host=DEFAULT_HOST, port=API_PORT):
     @app.route('/api/analysis', methods=['POST'])
     def run_analysis():
         """
-        运行对冲基金分析
-        Run hedge fund analysis
+        运行股票分析
+        Run stock analysis
         """
         try:
-            print("Received analysis request")
             data = request.get_json()
             print(f"Request data: {data}")
             
@@ -308,60 +307,19 @@ def start_api_server(host=DEFAULT_HOST, port=API_PORT):
             # print(f"Using model: {model_name}")
             
             # Try to run the web-specific analysis function
-            try:
-                result = run_hedge_fund_for_web(
-                    tickers=ticker_list,
-                    selected_analysts=selected_analysts,
-                    # model_name=model_name,
-                    start_date=data.get('startDate') or None,
-                    end_date=data.get('endDate') or None,
-                    initial_cash=data.get('initialCash', 100000),
-                )
+            result = run_hedge_fund_for_web(
+                tickers=ticker_list,
+                selected_analysts=selected_analysts,
+                # model_name=model_name,
+                start_date=data.get('startDate') or None,
+                end_date=data.get('endDate') or None,
+                # 移除 initialCash 参数，使用默认值 - Remove initialCash parameter, use default value
+                # initial_cash=data.get('initialCash', 100000),
+            )
+            
+            print("Analysis completed successfully")
+            return jsonify(result)
                 
-                print("Analysis completed successfully")
-                return jsonify(result)
-                
-            except Exception as e:
-                # If real analysis fails, fall back to simulated results
-                print(f"Error running real analysis: {str(e)}")
-                print(traceback.format_exc())
-                broadcast_log(f"Error in real analysis: {str(e)}", "error")
-                broadcast_log(traceback.format_exc(), "error")
-                
-                # 创建备用结果 - Create fallback results
-                result = {
-                    "ticker_analyses": {},
-                    "portfolio": {"cash": data.get('initialCash', 100000), "positions": {}}
-                }
-                
-                # Process each ticker directly (no threading)
-                for ticker in ticker_list:
-                    print(f"Processing ticker: {ticker}")
-                    result["ticker_analyses"][ticker] = {
-                        "signals": {},
-                        "reasoning": {}
-                    }
-                    
-                    # Fill in results for each analyst
-                    for analyst in selected_analysts:
-                        print(f"Running {analyst} analysis on {ticker}")
-                        
-                        # Add fake results
-                        import random
-                        signal = random.choice(['bullish', 'bearish', 'neutral'])
-                        confidence = random.randint(60, 95)
-                        
-                        # Update results
-                        result["ticker_analyses"][ticker]["signals"][analyst] = signal
-                        result["ticker_analyses"][ticker]["signals"][f"{analyst}_confidence"] = confidence
-                        result["ticker_analyses"][ticker]["reasoning"][analyst] = f"This is a detailed analysis of {ticker} by {analyst}."
-                    
-                    # Add overall signal
-                    result["ticker_analyses"][ticker]["signals"]["overall"] = "neutral"
-                    result["ticker_analyses"][ticker]["signals"]["confidence"] = 70
-                
-                print("Analysis completed with fallback data")
-                return jsonify(result)
         
         except Exception as e:
             print(f"API error: {str(e)}")
@@ -834,7 +792,8 @@ def run_hedge_fund_for_web(tickers, selected_analysts, start_date=None, end_date
     # Removed call to get_model_info, model_provider is fixed to OpenAI.
     # model_info = get_model_info(model_name)
     model_provider = "OpenAI" # model_info.provider.value if model_info else "Unknown"
-    # model_name 来自函数参数，这里主要用于日志记录 (model_name comes from function parameter, mainly for logging here)
+    # 固定使用 GPT-4o 模型 - Fixed to use GPT-4o model
+    model_name = "gpt-4o"
     # broadcast_log(f"Using model: {model_name} ({model_provider})", "info") 
     
     # Create portfolio
@@ -872,14 +831,7 @@ def run_hedge_fund_for_web(tickers, selected_analysts, start_date=None, end_date
     from src.agents.ben_graham import ben_graham_agent
     from src.agents.charlie_munger import charlie_munger_agent
     from src.agents.cathie_wood import cathie_wood_agent
-    from src.agents.nancy_pelosi import nancy_pelosi_agent
     from src.agents.peter_lynch import peter_lynch_agent
-    from src.agents.wsb_agent import wsb_agent
-    from src.agents.fundamentals import fundamentals_agent
-    from src.agents.technicals import technical_analyst_agent
-    from src.agents.sentiment import sentiment_agent
-    from src.agents.valuation import valuation_agent
-    from src.agents.risk_manager import risk_management_agent
     from src.agents.portfolio_manager import portfolio_management_agent
     
     # Map of available agents
@@ -889,21 +841,14 @@ def run_hedge_fund_for_web(tickers, selected_analysts, start_date=None, end_date
         "ben_graham_agent": ben_graham_agent,
         "charlie_munger_agent": charlie_munger_agent,
         "cathie_wood_agent": cathie_wood_agent,
-        "nancy_pelosi_agent": nancy_pelosi_agent,
         "peter_lynch_agent": peter_lynch_agent,
-        "wsb_agent": wsb_agent,
-        "fundamentals_agent": fundamentals_agent,
-        "technical_analyst_agent": technical_analyst_agent,
-        "sentiment_agent": sentiment_agent,
-        "valuation_agent": valuation_agent,
-        "risk_management_agent": risk_management_agent,
         "portfolio_management_agent": portfolio_management_agent
     }
     
     # Current state
     state = initial_state
     
-    # Run each selected analyst
+    # 运行每个选定的分析师
     for analyst_name in selected_analysts:
         if analyst_name in agent_map:
             broadcast_log(f"Running analyst: {analyst_name}", "info")
@@ -918,116 +863,55 @@ def run_hedge_fund_for_web(tickers, selected_analysts, start_date=None, end_date
                     if "data" in result:
                         state["data"] = result["data"]
                     
-                    # Display output in CLI-style with colors
-                    if analyst_name in state["data"]["analyst_signals"]:
-                        analyst_output = state["data"]["analyst_signals"][analyst_name]
-                        formatted_name = analyst_name.replace("_agent", "").replace("_", " ").title()
-                        
-                        # Print formatted analysis like in CLI with colors
-                        print(f"\n{Fore.CYAN}{Style.BRIGHT}{'=' * 10}     {formatted_name} Agent     {'=' * 10}{Style.RESET_ALL}")
-                        print(json.dumps(analyst_output, indent=2))
-                        print(f"{Fore.CYAN}{Style.BRIGHT}{'=' * 48}{Style.RESET_ALL}\n")
-                        
-                        # Also broadcast to WebSocket
-                        broadcast_log(f"===== {formatted_name} Analysis =====", "info")
-                        broadcast_log(json.dumps(analyst_output, indent=2), "info")
                 
                 broadcast_log(f"Completed {analyst_name} analysis", "success")
             except Exception as e:
                 broadcast_log(f"Error in {analyst_name}: {str(e)}", "error")
                 broadcast_log(traceback.format_exc(), "error")
     
-    # Always run risk management and portfolio management at the end
-    if "risk_management_agent" not in selected_analysts:
-        try:
-            broadcast_log("Running risk management analysis", "info")
-            result = risk_management_agent(AgentState(state))
-            if result:
-                if "messages" in result:
-                    state["messages"] = result["messages"]
-                if "data" in result:
-                    state["data"] = result["data"]
-                
-                # Display output in CLI-style with colors
-                if "risk_management_agent" in state["data"]["analyst_signals"]:
-                    risk_output = state["data"]["analyst_signals"]["risk_management_agent"]
-                    print(f"\n{Fore.CYAN}{Style.BRIGHT}{'=' * 10}    Risk Management Agent     {'=' * 10}{Style.RESET_ALL}")
-                    print(json.dumps(risk_output, indent=2))
-                    print(f"{Fore.CYAN}{Style.BRIGHT}{'=' * 48}{Style.RESET_ALL}\n")
-                    
-                    # Also broadcast to WebSocket
-                    broadcast_log("===== Risk Management Analysis =====", "info")
-                    broadcast_log(json.dumps(risk_output, indent=2), "info")
-                
-            broadcast_log("Completed risk management analysis", "success")
-        except Exception as e:
-            broadcast_log(f"Error in risk management: {str(e)}", "error")
-    
-    if "portfolio_management_agent" not in selected_analysts:
-        try:
-            broadcast_log("Running portfolio management analysis", "info")
-            result = portfolio_management_agent(AgentState(state))
-            if result:
-                if "messages" in result:
-                    state["messages"] = result["messages"]
-                if "data" in result:
-                    state["data"] = result["data"]
-                
-                # Display output in CLI-style with colors for portfolio decisions
-                if "portfolio_decision" in state["data"]:
-                    portfolio_decisions = state["data"]["portfolio_decision"]
-                    print(f"\n{Fore.CYAN}{Style.BRIGHT}{'=' * 10}    Portfolio Management Agent     {'=' * 10}{Style.RESET_ALL}")
-                    print(json.dumps(portfolio_decisions, indent=2))
-                    print(f"{Fore.CYAN}{Style.BRIGHT}{'=' * 48}{Style.RESET_ALL}\n")
-                    
-                    # Also broadcast to WebSocket
-                    broadcast_log("===== Portfolio Decisions =====", "info")
-                    broadcast_log(json.dumps(portfolio_decisions, indent=2), "info")
-                
-            broadcast_log("Completed portfolio management analysis", "success")
-        except Exception as e:
-            broadcast_log(f"Error in portfolio management: {str(e)}", "error")
-    
-    # Prepare the final output
+    # 准备最终输出 - 新的数组格式
+    # Prepare the final output - new array format
     result = {
-        "ticker_analyses": state["data"].get("ticker_analyses", {}),
-        "portfolio": state["data"].get("portfolio", portfolio),
-        "portfolio_decision": state["data"].get("portfolio_decision", {})
+        "ticker_analyses": {}
     }
     
-    # If there's no ticker_analyses yet, create it from analyst_signals
-    if not result["ticker_analyses"] and state["data"].get("analyst_signals"):
-        result["ticker_analyses"] = {}
-        for ticker in tickers:
-            result["ticker_analyses"][ticker] = {
-                "signals": {},
-                "reasoning": {}
-            }
-            for agent_name, signals in state["data"]["analyst_signals"].items():
-                if ticker in signals:
-                    signal_data = signals[ticker]
-                    if "signal" in signal_data:
-                        result["ticker_analyses"][ticker]["signals"][agent_name] = signal_data["signal"]
-                    if "confidence" in signal_data:
-                        result["ticker_analyses"][ticker]["signals"][f"{agent_name}_confidence"] = signal_data["confidence"]
-                    if "reasoning" in signal_data:
-                        result["ticker_analyses"][ticker]["reasoning"][agent_name] = signal_data["reasoning"]
+    # 从state中获取分析结果并转换为新格式
+    analyst_signals = state["data"].get("analyst_signals", {})
+
     
-    # Ensure signal consistency in the ticker_analyses
-    if result["ticker_analyses"] and len(selected_analysts) == 1:
-        for ticker, analysis in result["ticker_analyses"].items():
-            # If there's only one analyst, use their signal as the overall signal
-            analyst_name = selected_analysts[0]
-            if "signals" in analysis and analyst_name in analysis["signals"]:
-                # Get the analyst's signal 
-                analyst_signal = analysis["signals"][analyst_name]
-                # Set it as the overall signal
-                analysis["signals"]["overall"] = analyst_signal
-                # Set confidence too
-                if f"{analyst_name}_confidence" in analysis["signals"]:
-                    analysis["signals"]["confidence"] = analysis["signals"][f"{analyst_name}_confidence"]
+    for ticker in tickers:
+        result["ticker_analyses"][ticker] = []
+        
+        # 为每个选定的分析师创建一个结果对象
+        # Create a result object for each selected analyst
+        for analyst_name in selected_analysts:
+            analyst_result = {
+                "agent_name": analyst_name,
+                "signal": "中性",  # 默认信号
+                "confidence": 50.0,  # 默认置信度
+                "reasoning": "分析正在进行中..."  # 默认推理
+            }
+            
+            # 如果有实际的分析结果，使用它们
+            # If there are actual analysis results, use them
+            if analyst_name in analyst_signals and ticker in analyst_signals[analyst_name]:
+                analyst_data = analyst_signals[analyst_name][ticker]
+                
+                # 直接从分析师信号中获取数据
+                # Get data directly from analyst signals
+                if "signal" in analyst_data:
+                    analyst_result["signal"] = analyst_data["signal"]
+                
+                if "confidence" in analyst_data:
+                    analyst_result["confidence"] = analyst_data["confidence"]
+                
+                if "reasoning" in analyst_data:
+                    analyst_result["reasoning"] = analyst_data["reasoning"]
+            
+            result["ticker_analyses"][ticker].append(analyst_result)
     
     broadcast_log("Analysis completed successfully", "success")
+    
     return result
 
 def main():

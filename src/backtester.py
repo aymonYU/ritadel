@@ -14,7 +14,7 @@ from colorama import Fore, Style, init
 import numpy as np
 import itertools
 
-from llm.models import LLM_ORDER, get_model_info
+from llm.models import LLM_ORDER
 from utils.analysts import ANALYST_ORDER
 from main import run_hedge_fund
 from tools.api import (
