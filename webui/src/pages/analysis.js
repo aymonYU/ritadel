@@ -73,7 +73,7 @@ export default function Analysis() {
     // For first step, just check ticker input
     if (activeStep === 0) {
       if (!tickers.trim()) {
-        setAnalysisError("Please enter at least one ticker symbol");
+        setAnalysisError("请输入至少一个股票代码");
         return;
       }
     }
@@ -81,7 +81,7 @@ export default function Analysis() {
     // For second step, check analyst selection
     else if (activeStep === 1) {
       if (selectedAnalysts.length === 0) {
-        setAnalysisError("Please select at least one analyst");
+        setAnalysisError("请选择至少一个分析师");
         return;
       }
     }
@@ -118,7 +118,7 @@ export default function Analysis() {
         initialProgress[analyst.value] = {};
         ticker_list.forEach(ticker => {
           initialProgress[analyst.value][ticker] = {
-            status: 'Starting...',
+            status: '开始分析...',
             percent: 10
           };
         });
@@ -163,7 +163,7 @@ export default function Analysis() {
                 agent_name: analyst.value,
                 signal: Math.random() > 0.5 ? '买入' : '卖出',
                 confidence: Math.round(Math.random() * 40 + 60), // 60-100
-                reasoning: `Fallback analysis for ${ticker} by ${analyst.label}`
+                reasoning: `${analyst.label} 对 ${ticker} 的回退分析`
               }));
             });
             
@@ -177,7 +177,7 @@ export default function Analysis() {
         console.error('Analysis error:', error);
         
         // Don't hide the progress view, just show the error
-        setAnalysisError(`Error: ${error.message}. Check console for details.`);
+        setAnalysisError(`错误：${error.message}。请查看控制台获取详细信息。`);
         
         // Create fake/fallback results after error for testing
         setTimeout(() => {
@@ -189,13 +189,13 @@ export default function Analysis() {
           
           ticker_list.forEach(ticker => {
             fallbackResults.signals[ticker] = {
-              overallSignal: 'neutral',
+              overallSignal: '中性',
               confidence: 50,
               analysts: selectedAnalysts.map(analyst => ({
                 name: analyst.label,
-                signal: 'neutral',
+                signal: '中性',
                 confidence: 50,
-                reasoning: `ERROR FALLBACK: Analysis for ${ticker} by ${analyst.label}`
+                reasoning: `错误回退：${analyst.label} 对 ${ticker} 的分析`
               }))
             };
           });
@@ -218,12 +218,12 @@ export default function Analysis() {
 
   const validateInputs = () => {
     if (!tickers.trim()) {
-      setAnalysisError("Please enter at least one ticker symbol");
+      setAnalysisError("请输入至少一个股票代码");
       return false;
     }
     
     if (selectedAnalysts.length === 0) {
-      setAnalysisError("Please select at least one analyst");
+      setAnalysisError("请选择至少一个分析师");
       return false;
     }
     
@@ -245,37 +245,37 @@ export default function Analysis() {
 
   const steps = [
     {
-      label: 'Select Stocks',
-      description: 'Enter ticker symbols',
+      label: '输入股票代码',
+      description: '输入股票代码，用逗号分隔',
       content: (
         <Box sx={{ mt: 2 }}>
           <TextField
-            label="Ticker Symbols"
+            label="股票代码"
             fullWidth
             margin="normal"
             placeholder="AAPL, MSFT, GOOGL"
             value={tickers}
             onChange={(e) => setTickers(e.target.value)}
-            helperText="Enter comma-separated ticker symbols"
+            helperText="输入股票代码，用逗号分隔"
           />
         </Box>
       ),
     },
     {
-      label: 'Choose Analysts',
-      description: 'Select AI analysts to evaluate your stocks',
+      label: '选择分析师',
+      description: '选择AI分析师来评估你的股票',
       content: (
         <Box sx={{ mt: 2 }}>
           <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Typography variant="subtitle2">
-              Select AI analysts to evaluate your stocks
+              选择AI分析师来评估你的股票
             </Typography>
             <Button 
               size="small" 
               onClick={handleSelectAllAnalysts}
               variant="outlined"
             >
-              {selectedAnalysts.length === analystOptions.length ? 'Deselect All' : 'Select All'}
+              {selectedAnalysts.length === analystOptions.length ? '取消选择所有' : '选择所有'}
             </Button>
           </Box>
           
@@ -364,14 +364,14 @@ export default function Analysis() {
                           sx={{ mt: 1, mr: 1 }}
                           disabled={!isFormValid}
                         >
-                          {index === steps.length - 1 ? 'Run Analysis' : 'Continue'}
+                          {index === steps.length - 1 ? '开始分析' : '继续'}
                         </Button>
                         <Button
                           disabled={index === 0}
                           onClick={handleBack}
                           sx={{ mt: 1, mr: 1 }}
                         >
-                          Back
+                          返回
                         </Button>
                       </div>
                     </Box>
@@ -445,10 +445,10 @@ function AnalysisProgress({ progress, tickers, analysts, error, onCancel }) {
         <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Box>
             <Typography variant="h6" gutterBottom>
-              Analysis in Progress
+              分析进行中
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Elapsed time: {formatTime(elapsedTime)} | Overall progress: {calculateOverallProgress()}%
+              已用时间：{formatTime(elapsedTime)} | 总体进度：{calculateOverallProgress()}%
             </Typography>
           </Box>
           <Button 
@@ -457,7 +457,7 @@ function AnalysisProgress({ progress, tickers, analysts, error, onCancel }) {
             size="small"
             onClick={onCancel}
           >
-            Cancel
+            取消
           </Button>
         </Box>
         
@@ -490,7 +490,7 @@ function AnalysisProgress({ progress, tickers, analysts, error, onCancel }) {
                   {analysts.map(analyst => {
                     const agentProgress = progress[analyst.value]?.[ticker];
                     const pct = agentProgress ? agentProgress.percent : 0;
-                    const status = agentProgress ? agentProgress.status : 'Waiting...';
+                    const status = agentProgress ? agentProgress.status : '等待中...';
                     
                     // Determine color based on progress
                     let statusColor = '#666'; // default gray
@@ -552,21 +552,21 @@ function AnalysisResults({ results, onNewAnalysis }) {
     <Box>
       <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Typography variant="h6">
-          Analysis Results ({new Date().toISOString().split('T')[0]})
+          股票分析结果 ({new Date().toISOString().split('T')[0]})
         </Typography>
         <Button 
           variant="outlined" 
           onClick={onNewAnalysis}
         >
-          New Analysis
+          重新分析
         </Button>
       </Box>
       
-      {/* 原始数据 - Raw Data */}
+      {/* 原始数据 */}
       <Card>
         <CardContent>
           <Typography variant="h6" gutterBottom>
-            Raw Analysis Data (JSON Format)
+            原始数据 (JSON 格式)
           </Typography>
           <Box sx={{ 
             backgroundColor: (theme) => theme.palette.mode === 'dark' ? '#1e1e1e' : '#f5f5f5',
