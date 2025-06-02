@@ -19,7 +19,7 @@ class CharlieMungerSignal(BaseModel):
     Charlie Munger分析信号模型 - 包含投资信号、置信度和推理
     Charlie Munger analysis signal model - Contains investment signal, confidence and reasoning
     """
-    signal: Literal["bullish", "bearish", "neutral"]
+    signal: Literal["买入", "卖出", "中性"]
     confidence: float
     reasoning: str
 
@@ -35,14 +35,6 @@ def charlie_munger_agent(state: AgentState):
     4. 采用逆向思维和多学科方法
     5. 长期持有优质企业
     
-    Analyzes stocks using Charlie Munger's investing principles and mental models.
-    Focuses on moat strength, management quality, predictability, and valuation.
-    Munger's core philosophy:
-    1. Look for high-quality businesses with strong moats
-    2. Value management integrity and competence
-    3. Prefer simple, predictable business models
-    4. Use inversion thinking and multidisciplinary approach
-    5. Hold quality businesses for the long term
     """
     data = state["data"]
     end_date = data["end_date"]
@@ -134,11 +126,11 @@ def charlie_munger_agent(state: AgentState):
         
         # 生成买入/持有/卖出信号 - Generate a simple buy/hold/sell signal
         if total_score >= 7.5:  # 芒格的标准极高 - Munger has very high standards
-            signal = "bullish"
+            signal = "买入"
         elif total_score <= 4.5:
-            signal = "bearish"
+            signal = "卖出"
         else:
-            signal = "neutral"
+            signal = "中性"
         
         # 整合所有分析数据 - Combine all analysis data
         analysis_data[ticker] = {
@@ -723,41 +715,41 @@ def generate_munger_output(
     template = ChatPromptTemplate.from_messages([
         (
             "system",
-            """You are a Charlie Munger AI agent, making investment decisions using his principles:
+            """你是查理·芒格的人工智能代理，运用他的原则进行投资决策：
 
-            1. Focus on the quality and predictability of the business.
-            2. Rely on mental models from multiple disciplines to analyze investments.
-            3. Look for strong, durable competitive advantages (moats).
-            4. Emphasize long-term thinking and patience.
-            5. Value management integrity and competence.
-            6. Prioritize businesses with high returns on invested capital.
-            7. Pay a fair price for wonderful businesses.
-            8. Never overpay, always demand a margin of safety.
-            9. Avoid complexity and businesses you don't understand.
-            10. "Invert, always invert" - focus on avoiding stupidity rather than seeking brilliance.
-            
-            Rules:
-            - Praise businesses with predictable, consistent operations and cash flows.
-            - Value businesses with high ROIC and pricing power.
-            - Prefer simple businesses with understandable economics.
-            - Admire management with skin in the game and shareholder-friendly capital allocation.
-            - Focus on long-term economics rather than short-term metrics.
-            - Be skeptical of businesses with rapidly changing dynamics or excessive share dilution.
-            - Avoid excessive leverage or financial engineering.
-            - Provide a rational, data-driven recommendation (bullish, bearish, or neutral)."""
+            1. 关注业务的质量和可预测性。
+            2. 运用多种学科的思维模型来分析投资。
+            3. 寻找强大且持久的竞争优势（护城河）。
+            4. 强调长远的思考和耐心。
+            5. 重视管理层的诚信和能力。
+            6. 优先考虑投资回报率高的企业。
+            7. 为优秀的企业支付合理的价格。
+            8. 切勿出价过高，始终要求安全边际。
+            9. 避免复杂业务和你不了解的业务。
+            10. “逆向思维，永远逆向思维”——专注于避免愚蠢，而不是追求卓越。
+
+            规则：
+            - 赞扬运营和现金流可预测、稳定的企业。
+            - 重视高投资回报率和定价能力的企业。
+            - 青睐经济状况易于理解的简单企业。
+            - 欣赏那些积极参与并注重股东利益的资本配置的管理层。
+            - 关注长期经济效益而非短期指标。
+            - 对动态快速变化或股权稀释过度的企业保持警惕。
+            - 避免过度杠杆或金融工程。
+            - 提供理性的、基于数据的建议（看涨、看跌或中性）。"""
         ),
         (
             "human",
-            """Based on the following analysis, create a Munger-style investment signal.
+            """根据以下分析，创建芒格式的投资信号。
 
-            Analysis Data for {ticker}:
+            股票{ticker} 的分析数据:
             {analysis_data}
 
-            Return the trading signal in this JSON format:
+            按照此格式返回 JSON:
             {{
-              "signal": "bullish/bearish/neutral",
-              "confidence": float (0-100),
-              "reasoning": "string"
+                "signal": "买入/中性/卖出",
+                "confidence": float (0-100),
+                "reasoning": "string"
             }}
             """
         )

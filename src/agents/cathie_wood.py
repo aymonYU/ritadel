@@ -16,10 +16,10 @@ Cathie Wood disruptive innovation analyst agent - Based on Cathie Wood's disrupt
 
 class CathieWoodSignal(BaseModel):
     """
-    Cathie Wood分析信号模型 - 包含投资信号、置信度和推理
+    凯西·伍德分析信号模型 - 包含投资信号、置信度和推理
     Cathie Wood analysis signal model - Contains investment signal, confidence and reasoning
     """
-    signal: Literal["bullish", "bearish", "neutral"]
+    signal: Literal["买入", "卖出", "中性"]
     confidence: float
     reasoning: str
 
@@ -470,27 +470,35 @@ def generate_cathie_wood_output(
     template = ChatPromptTemplate.from_messages([
         (
             "system",
-            """You are a Cathie Wood AI agent, making investment decisions using her principles:\n\n"
-            "1. Seek companies leveraging disruptive innovation.\n"
-            "2. Emphasize exponential growth potential, large TAM.\n"
-            "3. Focus on technology, healthcare, or other future-facing sectors.\n"
-            "4. Consider multi-year time horizons for potential breakthroughs.\n"
-            "5. Accept higher volatility in pursuit of high returns.\n"
-            "6. Evaluate management's vision and ability to invest in R&D.\n\n"
-            "Rules:\n"
-            "- Identify disruptive or breakthrough technology.\n"
-            "- Evaluate strong potential for multi-year revenue growth.\n"
-            "- Check if the company can scale effectively in a large market.\n"
-            "- Use a growth-biased valuation approach.\n"
-            "- Provide a data-driven recommendation (bullish, bearish, or neutral)."""
+            """你是凯西·伍德的 AI 智能体，运用她的原则进行投资决策：
+            
+            “1. 寻找能够利用颠覆性创新的公司。”
+            “2. 强调指数级增长潜力和巨大的潜在市场。”
+            “3. 专注于科技、医疗保健或其他面向未来的行业。”
+            “4. 考虑多年的投资期限以寻找潜在的突破。”
+            “5. 为追求高回报，接受更高的波动性。”
+            “6. 评估管理层的愿景和研发投资能力。”
+            “规则：”
+            “- 识别颠​​覆性或突破性技术。”
+            “- 评估多年收入增长的强劲潜力。”
+            “- 检查公司是否能够在大型市场中有效扩展。”
+            “- 使用增长导向的估值方法。”
+            “- 提供数据驱动的建议（买入/卖出/中性）。"""
         ),
         (
             "human",
-            """Based on the following analysis, create a Cathie Wood-style investment signal.\n\n"
-            "Analysis Data for {ticker}:\n"
-            "{analysis_data}\n\n"
-            "Return the trading signal in this JSON format:\n"
-            "{{\n  \"signal\": \"bullish/bearish/neutral\",\n  \"confidence\": float (0-100),\n  \"reasoning\": \"string\"\n}}"""
+                """根据以下数据，像凯西·伍德那样创建投资信号。
+
+                股票{ticker} 的分析数据:
+                {analysis_data}
+
+                按照此格式返回 JSON:
+                {{
+                  "signal": "买入/中性/卖出",
+                  "confidence": float (0-100),
+                  "reasoning": "string"
+                }}
+            """,
         )
     ])
 
@@ -501,7 +509,7 @@ def generate_cathie_wood_output(
 
     def create_default_cathie_wood_signal():
         return CathieWoodSignal(
-            signal="neutral",
+            signal="中性",
             confidence=0.0,
             reasoning="Error in analysis, defaulting to neutral"
         )

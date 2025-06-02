@@ -1,4 +1,7 @@
-from langchain_openai import ChatOpenAI
+"""
+Bill Ackman激进投资分析师代理 - 基于比尔·阿克曼的积极投资策略
+Bill Ackman activist investor analyst agent - Based on Bill Ackman's activist investment strategies
+"""
 from graph.state import AgentState, show_agent_reasoning
 from tools.api import get_financial_metrics, get_market_cap, search_line_items
 from langchain_core.prompts import ChatPromptTemplate
@@ -9,17 +12,21 @@ from typing_extensions import Literal
 from utils.progress import progress
 from utils.llm import call_llm
 
-"""
-Bill Ackman激进投资分析师代理 - 基于比尔·阿克曼的积极投资策略
-Bill Ackman activist investor analyst agent - Based on Bill Ackman's activist investment strategies
-"""
 
 class BillAckmanSignal(BaseModel):
     """
     Bill Ackman分析信号模型 - 包含投资信号、置信度和推理
     Bill Ackman analysis signal model - Contains investment signal, confidence and reasoning
+
+    该模型用于表示基于阿克曼投资原则的交易信号结果
+    This model represents trading signal results based on Ackman's investment principles
+
+    Attributes:
+        signal: 交易信号，可以是买入、卖出或中性 / Trading signal: buy, sell or neutral
+        confidence: 信号的置信度，范围0-100 / Signal confidence, range 0-100
+        reasoning: 产生该信号的详细理由说明 / Detailed reasoning for the signal
     """
-    signal: Literal["bullish", "bearish", "neutral"]
+    signal: Literal["买入", "卖出", "中性"]
     confidence: float
     reasoning: str
 
@@ -97,14 +104,14 @@ def bill_ackman_agent(state: AgentState):
         total_score = quality_analysis["score"] + balance_sheet_analysis["score"] + valuation_analysis["score"]
         max_possible_score = 15  # 根据需要调整权重 - Adjust weighting as desired
         
-        # 生成简单的买入/持有/卖出（看涨/中性/看跌）信号
-        # Generate a simple buy/hold/sell (bullish/neutral/bearish) signal
+        # 生成简单的买入/持有/卖出（买入/中性/卖出）信号
+        # Generate a simple buy/hold/sell (buy/neutral/sell) signal
         if total_score >= 0.7 * max_possible_score:
-            signal = "bullish"
+            signal = "买入"
         elif total_score <= 0.3 * max_possible_score:
-            signal = "bearish"
+            signal = "卖出"
         else:
-            signal = "neutral"
+            signal = "中性"
         
         # 整合所有分析数据 - Combine all analysis data
         analysis_data[ticker] = {
@@ -173,11 +180,11 @@ def analyze_business_quality(metrics: list, financial_line_items: list) -> dict:
     if not metrics or not financial_line_items:
         return {
             "score": 0,
-            "details": "Insufficient data to analyze business quality"
+            "details": "业务质量分析数据不足 / Insufficient data to analyze business quality"
         }
     
     # 1. 多期收入增长分析 - Multi-period revenue growth analysis
-    revenues = [item.revenue for item in financial_line_items if item.revenue is not None]
+    revenues = [getattr(item, 'revenue', None) for item in financial_line_items if getattr(item, 'revenue', None) is not None]
     if len(revenues) >= 2:
         # 检查收入从第一期到最后一期是否整体增长 - Check if overall revenue grew from first to last
         initial, final = revenues[0], revenues[-1]
@@ -186,54 +193,55 @@ def analyze_business_quality(metrics: list, financial_line_items: list) -> dict:
             growth_rate = (final - initial) / abs(initial)
             if growth_rate > 0.5:  # 例如，在可用时间内增长50% - e.g., 50% growth over the available time
                 score += 2
-                details.append(f"Revenue grew by {(growth_rate*100):.1f}% over the full period.")
+                details.append(f"收入在整个期间增长了{(growth_rate*100):.1f}% / Revenue grew by {(growth_rate*100):.1f}% over the full period.")
             else:
                 score += 1
-                details.append(f"Revenue growth is positive but under 50% cumulatively ({(growth_rate*100):.1f}%).")
+                details.append(f"收入增长为正但累计低于50%（{(growth_rate*100):.1f}%）/ Revenue growth is positive but under 50% cumulatively ({(growth_rate*100):.1f}%).")
         else:
-            details.append("Revenue did not grow significantly or data insufficient.")
+            details.append("收入没有显著增长或数据不足 / Revenue did not grow significantly or data insufficient.")
     else:
-        details.append("Not enough revenue data for multi-period trend.")
+        details.append("多期趋势的收入数据不足 / Not enough revenue data for multi-period trend.")
     
     # 2. 营业利润率和自由现金流一致性 - Operating margin and free cash flow consistency
     # 检查营业利润率或自由现金流是否持续为正/改善
     # We'll check if operating_margin or free_cash_flow are consistently positive/improving
-    fcf_vals = [item.free_cash_flow for item in financial_line_items if hasattr(item, 'free_cash_flow') and item.free_cash_flow is not None]
-    op_margin_vals = [item.operating_margin for item in financial_line_items if hasattr(item, 'operating_margin') and item.operating_margin is not None]
+    fcf_vals = [getattr(item, 'free_cash_flow', None) for item in financial_line_items if getattr(item, 'free_cash_flow', None) is not None]
+    op_margin_vals = [getattr(item, 'operating_margin', None) for item in financial_line_items if getattr(item, 'operating_margin', None) is not None]
     
     if op_margin_vals:
         # 检查大部分营业利润率是否>15% - Check if the majority of operating margins are > 15%
         above_15 = sum(1 for m in op_margin_vals if m > 0.15)
         if above_15 >= (len(op_margin_vals) // 2 + 1):
             score += 2
-            details.append("Operating margins have often exceeded 15%.")
+            details.append("营业利润率经常超过15% / Operating margins have often exceeded 15%.")
         else:
-            details.append("Operating margin not consistently above 15%.")
+            details.append("营业利润率未持续保持在15%以上 / Operating margin not consistently above 15%.")
     else:
-        details.append("No operating margin data across periods.")
+        details.append("各期间无营业利润率数据 / No operating margin data across periods.")
     
     if fcf_vals:
         # 检查自由现金流在大部分时期是否为正 - Check if free cash flow is positive in most periods
         positive_fcf_count = sum(1 for f in fcf_vals if f > 0)
         if positive_fcf_count >= (len(fcf_vals) // 2 + 1):
             score += 1
-            details.append("Majority of periods show positive free cash flow.")
+            details.append("大部分期间显示正自由现金流 / Majority of periods show positive free cash flow.")
         else:
-            details.append("Free cash flow not consistently positive.")
+            details.append("自由现金流未持续为正 / Free cash flow not consistently positive.")
     else:
-        details.append("No free cash flow data across periods.")
+        details.append("各期间无自由现金流数据 / No free cash flow data across periods.")
     
     # 3. 最新指标的股本回报率(ROE)检查 - Return on Equity (ROE) check from the latest metrics
     # （如果需要多期ROE，也需要在financial_line_items中包含）
     # (If you want multi-period ROE, you'd need that in financial_line_items as well.)
     latest_metrics = metrics[0]
-    if latest_metrics.return_on_equity and latest_metrics.return_on_equity > 0.15:
+    roe = getattr(latest_metrics, 'return_on_equity', None)
+    if roe and roe > 0.15:
         score += 2
-        details.append(f"High ROE of {latest_metrics.return_on_equity:.1%}, indicating potential moat.")
-    elif latest_metrics.return_on_equity:
-        details.append(f"ROE of {latest_metrics.return_on_equity:.1%} is not indicative of a strong moat.")
+        details.append(f"高ROE为{roe:.1%}，表明潜在护城河 / High ROE of {roe:.1%}, indicating potential moat.")
+    elif roe:
+        details.append(f"ROE为{roe:.1%}，不表明强护城河 / ROE of {roe:.1%} is not indicative of a strong moat.")
     else:
-        details.append("ROE data not available in metrics.")
+        details.append("指标中无ROE数据 / ROE data not available in metrics.")
     
     return {
         "score": score,
@@ -243,6 +251,10 @@ def analyze_business_quality(metrics: list, financial_line_items: list) -> dict:
 
 def analyze_financial_discipline(metrics: list, financial_line_items: list) -> dict:
     """
+    评估公司在多个期间的资产负债表：
+    - 债务比率趋势
+    - 长期向股东返还资本（股息、回购）
+    
     Evaluate the company's balance sheet over multiple periods:
     - Debt ratio trends
     - Capital returns to shareholders over time (dividends, buybacks)
@@ -253,64 +265,66 @@ def analyze_financial_discipline(metrics: list, financial_line_items: list) -> d
     if not metrics or not financial_line_items:
         return {
             "score": 0,
-            "details": "Insufficient data to analyze financial discipline"
+            "details": "财务纪律分析数据不足 / Insufficient data to analyze financial discipline"
         }
     
     # 1. Multi-period debt ratio or debt_to_equity
     # Check if the company's leverage is stable or improving
-    debt_to_equity_vals = [item.debt_to_equity for item in financial_line_items 
-                          if hasattr(item, 'debt_to_equity') and item.debt_to_equity is not None]
+    debt_to_equity_vals = [getattr(item, 'debt_to_equity', None) for item in financial_line_items 
+                          if getattr(item, 'debt_to_equity', None) is not None]
     
     # If we have multi-year data, see if D/E ratio has gone down or stayed <1 across most periods
     if debt_to_equity_vals:
         below_one_count = sum(1 for d in debt_to_equity_vals if d < 1.0)
         if below_one_count >= (len(debt_to_equity_vals) // 2 + 1):
             score += 2
-            details.append("Debt-to-equity < 1.0 for the majority of periods.")
+            details.append("大部分期间债务权益比<1.0 / Debt-to-equity < 1.0 for the majority of periods.")
         else:
-            details.append("Debt-to-equity >= 1.0 in many periods.")
+            details.append("许多期间债务权益比≥1.0 / Debt-to-equity >= 1.0 in many periods.")
     else:
         # Fallback to total_liabilities/total_assets if D/E not available
         liab_to_assets = []
         for item in financial_line_items:
-            if item.total_liabilities and item.total_assets and item.total_assets > 0:
-                liab_to_assets.append(item.total_liabilities / item.total_assets)
+            total_liabilities = getattr(item, 'total_liabilities', None)
+            total_assets = getattr(item, 'total_assets', None)
+            if total_liabilities and total_assets and total_assets > 0:
+                liab_to_assets.append(total_liabilities / total_assets)
         
         if liab_to_assets:
             below_50pct_count = sum(1 for ratio in liab_to_assets if ratio < 0.5)
             if below_50pct_count >= (len(liab_to_assets) // 2 + 1):
                 score += 2
-                details.append("Liabilities-to-assets < 50% for majority of periods.")
+                details.append("大部分期间负债资产比<50% / Liabilities-to-assets < 50% for majority of periods.")
             else:
-                details.append("Liabilities-to-assets >= 50% in many periods.")
+                details.append("许多期间负债资产比≥50% / Liabilities-to-assets >= 50% in many periods.")
         else:
-            details.append("No consistent leverage ratio data available.")
+            details.append("无一致的杠杆比率数据 / No consistent leverage ratio data available.")
     
     # 2. Capital allocation approach (dividends + share counts)
     # If the company paid dividends or reduced share count over time, it may reflect discipline
-    dividends_list = [item.dividends_and_other_cash_distributions for item in financial_line_items if item.dividends_and_other_cash_distributions is not None]
+    dividends_list = [getattr(item, 'dividends_and_other_cash_distributions', None) for item in financial_line_items if getattr(item, 'dividends_and_other_cash_distributions', None) is not None]
     if dividends_list:
         # Check if dividends were paid (i.e., negative outflows to shareholders) in most periods
         paying_dividends_count = sum(1 for d in dividends_list if d < 0)
         if paying_dividends_count >= (len(dividends_list) // 2 + 1):
             score += 1
-            details.append("Company has a history of returning capital to shareholders (dividends).")
+            details.append("公司有向股东返还资本的历史（股息）/ Company has a history of returning capital to shareholders (dividends).")
         else:
-            details.append("Dividends not consistently paid or no data.")
+            details.append("股息未持续支付或无数据 / Dividends not consistently paid or no data.")
     else:
-        details.append("No dividend data found across periods.")
+        details.append("各期间无股息数据 / No dividend data found across periods.")
     
     # Check for decreasing share count (simple approach):
     # We can compare first vs last if we have at least two data points
-    shares = [item.outstanding_shares for item in financial_line_items if item.outstanding_shares is not None]
+    shares = [getattr(item, 'outstanding_shares', None) for item in financial_line_items if getattr(item, 'outstanding_shares', None) is not None]
     if len(shares) >= 2:
         if shares[-1] < shares[0]:
             score += 1
-            details.append("Outstanding shares have decreased over time (possible buybacks).")
+            details.append("流通股数随时间减少（可能回购）/ Outstanding shares have decreased over time (possible buybacks).")
         else:
-            details.append("Outstanding shares have not decreased over the available periods.")
+            details.append("流通股数在可用期间内未减少 / Outstanding shares have not decreased over the available periods.")
     else:
-        details.append("No multi-period share count data to assess buybacks.")
+        details.append("无多期股数数据来评估回购 / No multi-period share count data to assess buybacks.")
     
     return {
         "score": score,
@@ -320,6 +334,11 @@ def analyze_financial_discipline(metrics: list, financial_line_items: list) -> d
 
 def analyze_valuation(financial_line_items: list, market_cap: float) -> dict:
     """
+    阿克曼投资于以内在价值折价交易的公司。
+    我们可以做简化的DCF或基于FCF的方法。
+    此函数目前仅使用最新的自由现金流，
+    但可以扩展为使用平均或多年FCF方法。
+    
     Ackman invests in companies trading at a discount to intrinsic value.
     We can do a simplified DCF or an FCF-based approach.
     This function currently uses the latest free cash flow only, 
@@ -328,12 +347,12 @@ def analyze_valuation(financial_line_items: list, market_cap: float) -> dict:
     if not financial_line_items or market_cap is None:
         return {
             "score": 0,
-            "details": "Insufficient data to perform valuation"
+            "details": "估值数据不足 / Insufficient data to perform valuation"
         }
     
     # Example: use the most recent item for FCF
     latest = financial_line_items[-1]  # the last one is presumably the most recent
-    fcf = latest.free_cash_flow if latest.free_cash_flow else 0
+    fcf = getattr(latest, 'free_cash_flow', None) or 0
     
     # For demonstration, let's do a naive approach:
     growth_rate = 0.06
@@ -344,7 +363,7 @@ def analyze_valuation(financial_line_items: list, market_cap: float) -> dict:
     if fcf <= 0:
         return {
             "score": 0,
-            "details": f"No positive FCF for valuation; FCF = {fcf}",
+            "details": f"无正FCF进行估值；FCF = {fcf} / No positive FCF for valuation; FCF = {fcf}",
             "intrinsic_value": None
         }
     
@@ -369,9 +388,9 @@ def analyze_valuation(financial_line_items: list, market_cap: float) -> dict:
         score += 1
     
     details = [
-        f"Calculated intrinsic value: ~{intrinsic_value:,.2f}",
-        f"Market cap: ~{market_cap:,.2f}",
-        f"Margin of safety: {margin_of_safety:.2%}"
+        f"计算内在价值：~{intrinsic_value:,.2f} / Calculated intrinsic value: ~{intrinsic_value:,.2f}",
+        f"市值：~{market_cap:,.2f} / Market cap: ~{market_cap:,.2f}",
+        f"安全边际：{margin_of_safety:.2%} / Margin of safety: {margin_of_safety:.2%}"
     ]
     
     return {
@@ -382,49 +401,53 @@ def analyze_valuation(financial_line_items: list, market_cap: float) -> dict:
     }
 
 
-# 移除了 model_name 和 model_provider 参数，因为模型固定为 GPT-4o
-# Removed model_name and model_provider parameters as the model is fixed to GPT-4o
 def generate_ackman_output(
     ticker: str,
     analysis_data: dict[str, any],
-    # model_name: str, # 已移除 (Removed)
-    # model_provider: str, # 已移除 (Removed)
 ) -> BillAckmanSignal:
     """
+    基于比尔·阿克曼的风格生成投资决策
     Generates investment decisions in the style of Bill Ackman.
     """
     template = ChatPromptTemplate.from_messages([
         (
             "system",
-            """You are a Bill Ackman AI agent, making investment decisions using his principles:
+            """你是比尔·阿克曼的人工智能代理，使用他的原则做出投资决策：
 
-            1. Seek high-quality businesses with durable competitive advantages (moats).
-            2. Prioritize consistent free cash flow and growth potential.
-            3. Advocate for strong financial discipline (reasonable leverage, efficient capital allocation).
-            4. Valuation matters: target intrinsic value and margin of safety.
-            5. Invest with high conviction in a concentrated portfolio for the long term.
-            6. Potential activist approach if management or operational improvements can unlock value.
+            1. 寻找具有持久竞争优势（护城河）的高质量企业。
+            2. 优先考虑持续的自由现金流和增长潜力。
+            3. 倡导强有力的财务纪律（合理杠杆、高效资本配置）。
+            4. 估值很重要：目标内在价值和安全边际。
+            5. 对集中投资组合进行高信念的长期投资。
+            6. 如果管理层或运营改进能够释放价值，采取积极投资方法。
             
-            Rules:
-            - Evaluate brand strength, market position, or other moats.
-            - Check free cash flow generation, stable or growing earnings.
-            - Analyze balance sheet health (reasonable debt, good ROE).
-            - Buy at a discount to intrinsic value; higher discount => stronger conviction.
-            - Engage if management is suboptimal or if there's a path for strategic improvements.
-            - Provide a rational, data-driven recommendation (bullish, bearish, or neutral)."""
+            规则：
+            - 评估品牌实力、市场地位或其他护城河。
+            - 检查自由现金流生成、稳定或增长的收益。
+            - 分析资产负债表健康状况（合理债务、良好ROE）。
+            - 以内在价值折价买入；折价越高 => 信念越强。
+            - 如果管理层不佳或有战略改进路径，积极参与。
+            - 提供理性、数据驱动的建议（买入、卖出或中性）。
+
+            严格按照以下JSON格式返回交易信号：
+            {{
+              "signal": "买入" | "卖出" | "中性",
+              "confidence": 0到100之间的浮点数,
+              "reasoning": "字符串"
+            }}"""
         ),
         (
             "human",
-            """Based on the following analysis, create an Ackman-style investment signal.
+            """基于以下分析，创建阿克曼风格的投资信号。
 
-            Analysis Data for {ticker}:
+            {ticker}的分析数据：
             {analysis_data}
 
-            Return the trading signal in this JSON format:
+            完全按照以下JSON格式返回交易信号：
             {{
-              "signal": "bullish/bearish/neutral",
-              "confidence": float (0-100),
-              "reasoning": "string"
+              "signal": "买入" | "卖出" | "中性",
+              "confidence": 0到100之间的浮点数,
+              "reasoning": "字符串"
             }}
             """
         )
@@ -437,17 +460,13 @@ def generate_ackman_output(
 
     def create_default_bill_ackman_signal():
         return BillAckmanSignal(
-            signal="neutral",
+            signal="中性",
             confidence=0.0,
-            reasoning="Error in analysis, defaulting to neutral"
+            reasoning="分析错误，默认为中性 / Error in analysis, defaulting to neutral"
         )
 
-    # 调用 call_llm 时不再传递 model_name 和 model_provider
-    # model_name and model_provider are no longer passed when calling call_llm
     return call_llm(
         prompt=prompt, 
-        # model_name=model_name, # 已移除 (Removed)
-        # model_provider=model_provider, # 已移除 (Removed)
         pydantic_model=BillAckmanSignal, 
         agent_name="bill_ackman_agent", 
         default_factory=create_default_bill_ackman_signal,

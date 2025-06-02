@@ -873,6 +873,7 @@ def run_hedge_fund_for_web(tickers, selected_analysts, start_date=None, end_date
     from src.agents.charlie_munger import charlie_munger_agent
     from src.agents.cathie_wood import cathie_wood_agent
     from src.agents.nancy_pelosi import nancy_pelosi_agent
+    from src.agents.peter_lynch import peter_lynch_agent
     from src.agents.wsb_agent import wsb_agent
     from src.agents.fundamentals import fundamentals_agent
     from src.agents.technicals import technical_analyst_agent
@@ -889,6 +890,7 @@ def run_hedge_fund_for_web(tickers, selected_analysts, start_date=None, end_date
         "charlie_munger_agent": charlie_munger_agent,
         "cathie_wood_agent": cathie_wood_agent,
         "nancy_pelosi_agent": nancy_pelosi_agent,
+        "peter_lynch_agent": peter_lynch_agent,
         "wsb_agent": wsb_agent,
         "fundamentals_agent": fundamentals_agent,
         "technical_analyst_agent": technical_analyst_agent,

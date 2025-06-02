@@ -1,16 +1,19 @@
 """Constants and utilities related to analysts configuration."""
 
 from agents.ben_graham import ben_graham_agent
+# from agents.bill_ackman import bill_ackman_agent
 from agents.bill_ackman import bill_ackman_agent
 from agents.cathie_wood import cathie_wood_agent
 from agents.charlie_munger import charlie_munger_agent
-from agents.fundamentals import fundamentals_agent
-from agents.nancy_pelosi import nancy_pelosi_agent
-from agents.sentiment import sentiment_agent
-from agents.technicals import technical_analyst_agent
-from agents.valuation import valuation_agent
+# from agents.fundamentals import fundamentals_agent
+# from agents.nancy_pelosi import nancy_pelosi_agent
+from agents.peter_lynch import peter_lynch_agent
+from agents.phil_fisher import phil_fisher_agent
+# from agents.sentiment import sentiment_agent
+# from agents.technicals import technical_analyst_agent
+# from agents.valuation import valuation_agent
 from agents.warren_buffett import warren_buffett_agent
-from agents.wsb_agent import wsb_agent
+# from agents.wsb_agent import wsb_agent
 
 # Define analyst configuration - single source of truth
 ANALYST_CONFIG = {
@@ -19,16 +22,16 @@ ANALYST_CONFIG = {
         "agent_func": ben_graham_agent,
         "order": 0,
     },
-    # "bill_ackman": {
-    #     "display_name": "Bill Ackman",
-    #     "agent_func": bill_ackman_agent,
-    #     "order": 1,
-    # },
-    # "cathie_wood": {
-    #     "display_name": "Cathie Wood",
-    #     "agent_func": cathie_wood_agent,
-    #     "order": 2,
-    # },
+    "bill_ackman": {
+        "display_name": "Bill Ackman",
+        "agent_func": bill_ackman_agent,
+        "order": 1,
+    },
+    "cathie_wood": {
+        "display_name": "Cathie Wood",
+        "agent_func": cathie_wood_agent,
+        "order": 2,
+    },
     "charlie_munger": {
         "display_name": "Charlie Munger",
         "agent_func": charlie_munger_agent,
@@ -39,10 +42,20 @@ ANALYST_CONFIG = {
     #     "agent_func": nancy_pelosi_agent,
     #     "order": 4,
     # },
+    "peter_lynch": {
+        "display_name": "Peter Lynch",
+        "agent_func": peter_lynch_agent,
+        "order": 4,
+    },
+    "phil_fisher": {
+        "display_name": "Phil Fisher",
+        "agent_func": phil_fisher_agent,
+        "order": 5,
+    },
     "warren_buffett": {
         "display_name": "Warren Buffett",
         "agent_func": warren_buffett_agent,
-        "order": 5,
+        "order": 6,
     },
     # "wsb": {
     #     "display_name": "WallStreetBets",

@@ -298,6 +298,12 @@ def setup_analysts(ticker_signals):
             background="ARK Invest founder, focuses on disruptive innovation and technology",
             biases="Favors high-growth technology companies with disruptive potential"
         ),
+        "peter_lynch_agent": AnalystPersona(
+            name="Peter Lynch",
+            style="Practical, folksy, emphasizes investing in what you know, growth-focused",
+            background="Former Fidelity Magellan fund manager, famous for 'invest in what you know' philosophy",
+            biases="Prefers understandable businesses with strong growth potential at reasonable prices (GARP), looks for 'ten-baggers'"
+        ),
         "bill_ackman_agent": AnalystPersona(
             name="Bill Ackman",
             style="Forceful, activist mindset, confident, pushes for concrete action",
