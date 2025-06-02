@@ -14,7 +14,7 @@ function MyApp({ Component, pageProps }) {
       <CssBaseline />
       {/* Remove SnackbarProvider wrapper */}
       <Head>
-        <title>Hedge Fund AI</title>
+        <title>AI价值投资助手</title>
         <meta name="description" content="AI-powered investment analysis platform" />
         <link rel="icon" href="/favicon.ico" />
         {/* Font links moved to _document.js */}

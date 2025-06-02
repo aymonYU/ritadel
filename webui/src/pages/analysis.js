@@ -115,8 +115,20 @@ const analystOptions = [
 
 // 股票代码建议
 const stockSuggestions = [
+  { symbol: '0700.HK', name: '腾讯', category: '科技' },
   { symbol: 'AAPL', name: '苹果', category: '科技' },
   { symbol: 'MSFT', name: '微软', category: '科技' },
+  { symbol: '09988.HK', name: '阿里巴巴', category: '科技' },
+  { symbol: '03690.HK', name: '美团', category: '科技' },
+  { symbol: '01810.HK', name: '小米', category: '科技' },
+  { symbol: '00001.HK', name: '长和', category: '金融' },
+  { symbol: '00005.HK', name: '汇丰控股', category: '金融' },
+  { symbol: '00006.HK', name: '电能实业', category: '金融' },
+  { symbol: '600519.SS', name: '贵州茅台', category: '消费品' },
+  { symbol: '601888.SS', name: '中国中免', category: '消费品' },
+  { symbol: '601318.SS', name: '中国平安', category: '金融' },
+  { symbol: '601398.SS', name: '工商银行', category: '金融' },
+  { symbol: '601939.SS', name: '建设银行', category: '金融' },
   { symbol: 'GOOGL', name: '谷歌', category: '科技' },
   { symbol: 'AMZN', name: '亚马逊', category: '科技' },
   { symbol: 'TSLA', name: '特斯拉', category: '汽车' },
@@ -711,7 +723,7 @@ export default function Analysis() {
 
               {/* 按分类展示股票建议 */}
               <Grid container spacing={1}>
-                {Object.entries(groupedStockSuggestions).slice(0, 4).map(([category, stocks]) => (
+                {Object.entries(groupedStockSuggestions).slice(0, 8).map(([category, stocks]) => (
                   <Grid item xs={12} sm={6} md={3} key={category}>
                     <Box sx={{ mb: 2 }}>
                       <Typography
