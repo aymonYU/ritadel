@@ -2,7 +2,7 @@ import { ThemeProvider } from '@mui/material/styles';
 import { CssBaseline } from '@mui/material';
 // Remove notistack import until installed
 // import { SnackbarProvider } from 'notistack';
-import darkTheme from '../theme/darkTheme';
+import lightTheme from '../theme/darkTheme';
 import Layout from '../components/Layout';
 import '../styles/globals.css';
 import Head from 'next/head';
@@ -10,7 +10,7 @@ import Head from 'next/head';
 
 function MyApp({ Component, pageProps }) {
   return (
-    <ThemeProvider theme={darkTheme}>
+    <ThemeProvider theme={lightTheme}>
       <CssBaseline />
       {/* Remove SnackbarProvider wrapper */}
       <Head>
