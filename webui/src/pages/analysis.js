@@ -693,7 +693,8 @@ export default function Analysis() {
                                 fontSize: '0.75rem',
                                 height: 24,
                                 background: isAlreadySelected ?
-                                  (isDarkMode ? 'grey.700' : 'grey.300') :
+                                  // (isDarkMode ? 'grey.700' : 'grey.300') 
+                                  'rgba(255,255,255,0.05)':
                                   `${categoryColors[category]}15`,
                                 color: isAlreadySelected ?
                                   (isDarkMode ? 'grey.400' : 'grey.600') :
@@ -890,7 +891,7 @@ export default function Analysis() {
                             label={analyst.label}
                             onDelete={() => handleAnalystToggle(analyst)}
                             sx={{
-                              bgcolor: `${category?.color}20`,
+                              background: `${category?.color}20`,
                               color: category?.color,
                               fontWeight: 'bold',
                               '& .MuiChip-deleteIcon': {
@@ -983,7 +984,10 @@ export default function Analysis() {
                 background: '#fce4ec',
                 color: '#c2185b',
                 fontWeight: 'bold',
-                border: '1px solid #f8bbd9'
+                border: '1px solid #f8bbd9',
+                '&:hover': {
+                  background: '#fce4ec',
+                },
               }}
             />
             <Chip
@@ -993,7 +997,10 @@ export default function Analysis() {
                 background: '#fce4ec',
                 color: '#c2185b',
                 fontWeight: 'bold',
-                border: '1px solid #f8bbd9'
+                border: '1px solid #f8bbd9',
+                '&:hover': {
+                  background: '#fce4ec',
+                },
               }}
             />
             <Chip
@@ -1003,7 +1010,10 @@ export default function Analysis() {
                 background: '#fce4ec',
                 color: '#c2185b',
                 fontWeight: 'bold',
-                border: '1px solid #f8bbd9'
+                border: '1px solid #f8bbd9',
+                '&:hover': {
+                  background: '#fce4ec',
+                },
               }}
             />
           </Box>
@@ -1482,11 +1492,11 @@ function AnalysisResults({ results, onNewAnalysis }) {
                   color={filterSignal === 'all' ? 'primary' : 'default'}
                   size="small"
                   sx={{
-                    bgcolor: filterSignal === 'all' ? '#fce4ec' : 'transparent',
+                    background: filterSignal === 'all' ? '#fce4ec' : 'transparent',
                     color: filterSignal === 'all' ? '#c2185b' : 'text.secondary',
                     border: filterSignal === 'all' ? '1px solid #f8bbd9' : '1px solid #e0e0e0',
                     '&:hover': {
-                      bgcolor: '#fce4ec',
+                      background: '#fce4ec',
                       color: '#c2185b'
                     }
                   }}
@@ -1497,11 +1507,11 @@ function AnalysisResults({ results, onNewAnalysis }) {
                   color={filterSignal === 'buy' ? 'success' : 'default'}
                   size="small"
                   sx={{
-                    bgcolor: filterSignal === 'buy' ? '#e8f5e9' : 'transparent',
+                    background: filterSignal === 'buy' ? '#e8f5e9' : 'transparent',
                     color: filterSignal === 'buy' ? '#4caf50' : 'text.secondary',
                     border: filterSignal === 'buy' ? '1px solid #c8e6c9' : '1px solid #e0e0e0',
                     '&:hover': {
-                      bgcolor: '#e8f5e9',
+                      background: '#e8f5e9',
                       color: '#4caf50'
                     }
                   }}
@@ -1512,11 +1522,11 @@ function AnalysisResults({ results, onNewAnalysis }) {
                   color={filterSignal === 'sell' ? 'error' : 'default'}
                   size="small"
                   sx={{
-                    bgcolor: filterSignal === 'sell' ? '#ffebee' : 'transparent',
+                    background: filterSignal === 'sell' ? '#ffebee' : 'transparent',
                     color: filterSignal === 'sell' ? '#f44336' : 'text.secondary',
                     border: filterSignal === 'sell' ? '1px solid #ffcdd2' : '1px solid #e0e0e0',
                     '&:hover': {
-                      bgcolor: '#ffebee',
+                      background: '#ffebee',
                       color: '#f44336'
                     }
                   }}
@@ -1527,11 +1537,11 @@ function AnalysisResults({ results, onNewAnalysis }) {
                   color={filterSignal === 'neutral' ? 'warning' : 'default'}
                   size="small"
                   sx={{
-                    bgcolor: filterSignal === 'neutral' ? '#fff3e0' : 'transparent',
+                    background: filterSignal === 'neutral' ? '#fff3e0' : 'transparent',
                     color: filterSignal === 'neutral' ? '#ff9800' : 'text.secondary',
                     border: filterSignal === 'neutral' ? '1px solid #ffcc02' : '1px solid #e0e0e0',
                     '&:hover': {
-                      bgcolor: '#fff3e0',
+                      background: '#fff3e0',
                       color: '#ff9800'
                     }
                   }}
@@ -1547,11 +1557,11 @@ function AnalysisResults({ results, onNewAnalysis }) {
                   color={sortBy === 'confidence' ? 'primary' : 'default'}
                   size="small"
                   sx={{
-                    bgcolor: sortBy === 'confidence' ? '#fce4ec' : 'transparent',
+                    background: sortBy === 'confidence' ? '#fce4ec' : 'transparent',
                     color: sortBy === 'confidence' ? '#c2185b' : 'text.secondary',
                     border: sortBy === 'confidence' ? '1px solid #f8bbd9' : '1px solid #e0e0e0',
                     '&:hover': {
-                      bgcolor: '#fce4ec',
+                      background: '#fce4ec',
                       color: '#c2185b'
                     }
                   }}
@@ -1562,11 +1572,11 @@ function AnalysisResults({ results, onNewAnalysis }) {
                   color={sortBy === 'signal' ? 'primary' : 'default'}
                   size="small"
                   sx={{
-                    bgcolor: sortBy === 'signal' ? '#fce4ec' : 'transparent',
+                    background: sortBy === 'signal' ? '#fce4ec' : 'transparent',
                     color: sortBy === 'signal' ? '#c2185b' : 'text.secondary',
                     border: sortBy === 'signal' ? '1px solid #f8bbd9' : '1px solid #e0e0e0',
                     '&:hover': {
-                      bgcolor: '#fce4ec',
+                      background: '#fce4ec',
                       color: '#c2185b'
                     }
                   }}
@@ -1577,11 +1587,11 @@ function AnalysisResults({ results, onNewAnalysis }) {
                   color={sortBy === 'analyst' ? 'primary' : 'default'}
                   size="small"
                   sx={{
-                    bgcolor: sortBy === 'analyst' ? '#fce4ec' : 'transparent',
+                    background: sortBy === 'analyst' ? '#fce4ec' : 'transparent',
                     color: sortBy === 'analyst' ? '#c2185b' : 'text.secondary',
                     border: sortBy === 'analyst' ? '1px solid #f8bbd9' : '1px solid #e0e0e0',
                     '&:hover': {
-                      bgcolor: '#fce4ec',
+                      background: '#fce4ec',
                       color: '#c2185b'
                     }
                   }}
@@ -1714,7 +1724,7 @@ function AnalysisResults({ results, onNewAnalysis }) {
                             label={signalInfo.text}
                             size="small"
                             sx={{
-                              bgcolor: (theme) => theme.palette.mode === 'dark' ? signalInfo.bgColorDark : signalInfo.bgColorLight,
+                              background: (theme) => theme.palette.mode === 'dark' ? signalInfo.bgColorDark : signalInfo.bgColorLight,
                               color: signalInfo.color,
                               fontWeight: 'bold'
                             }}
