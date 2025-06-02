@@ -1,7 +1,39 @@
 import axios from 'axios';
 
-// Updated API_URL to use full URL
-const API_URL = 'http://127.0.0.1:5000';
+// 根据环境动态配置 API URL
+const getApiUrl = () => {
+  // 优先级：环境变量 > 生产环境检测 > 默认开发环境
+  if (typeof window !== 'undefined') {
+    // 客户端环境
+    const env = process.env.NODE_ENV;
+    const customApiUrl = process.env.NEXT_PUBLIC_API_URL;
+    
+    if (customApiUrl) {
+      return customApiUrl;
+    }
+    
+    // 生产环境检测
+    if (env === 'production') {
+      const { protocol, hostname, port } = window.location;
+      // 生产环境中，假设API服务与前端在同一域名下的不同端口
+      const apiPort = process.env.NEXT_PUBLIC_API_PORT || '5000';
+      return `${protocol}//${hostname}:${apiPort}`;
+    }
+    
+    // 开发环境默认值
+    return process.env.NEXT_PUBLIC_DEV_API_URL || 'http://127.0.0.1:5000';
+  }
+  
+  // 服务端渲染环境
+  return process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
+};
+
+const API_URL = getApiUrl();
+
+// 在开发环境中打印 API URL 以便调试
+if (process.env.NODE_ENV === 'development') {
+  console.log('API URL:', API_URL);
+}
 
 // Create axios instance
 const api = axios.create({

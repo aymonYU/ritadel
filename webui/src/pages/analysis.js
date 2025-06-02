@@ -347,21 +347,11 @@ export default function Analysis() {
       });
       setProgress(initialProgress);
 
-      // Make API request with fetch directly instead of axios for debugging
-      fetch('http://127.0.0.1:5000/api/analysis', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tickers: tickers,
-          selectedAnalysts: selectedAnalysts.map(a => a.value),
-        })
+      // 使用统一的 API 配置而不是硬编码
+      runAnalysis({
+        tickers: tickers,
+        selectedAnalysts: selectedAnalysts.map(a => a.value),
       })
-        .then(response => {
-          if (!response.ok) {
-            throw new Error(`HTTP error ${response.status}`);
-          }
-          return response.json();
-        })
         .then(data => {
           console.log('Analysis success:', data);
 
