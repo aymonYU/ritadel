@@ -268,7 +268,7 @@ export default function Analysis() {
         <Box sx={{ mt: 2 }}>
           <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Typography variant="subtitle2">
-              选择AI分析师来评估你的股票
+              选择AI分析师来分析股票
             </Typography>
             <Button 
               size="small" 
@@ -548,9 +548,116 @@ function AnalysisProgress({ progress, tickers, analysts, error, onCancel }) {
 }
 
 function AnalysisResults({ results, onNewAnalysis }) {
+  const [viewMode, setViewMode] = useState('cards'); // 'cards' or 'table' or 'raw'
+  const [filterSignal, setFilterSignal] = useState('all'); // 'all', 'buy', 'sell', 'neutral'
+  const [sortBy, setSortBy] = useState('confidence'); // 'confidence', 'signal', 'analyst'
+  const [expandedCards, setExpandedCards] = useState(new Set());
+
+  // 将分析师代码映射为中文显示名称
+  const getAnalystDisplayName = (agentName) => {
+    const analystMapping = {
+      'warren_buffett_agent': '巴菲特',
+      'charlie_munger_agent': '芒格',
+      'ben_graham_agent': '格雷厄姆',
+      'bill_ackman_agent': '艾克曼',
+      'cathie_wood_agent': '木头姐',
+      'peter_lynch_agent': '彼得·林奇',
+      'phil_fisher_agent': '菲尔·费舍尔'
+    };
+    return analystMapping[agentName] || agentName;
+  };
+
+  // 解析结果数据
+  const parseResults = () => {
+    if (!results || !results.ticker_analyses) return [];
+    
+    const parsed = [];
+    Object.entries(results.ticker_analyses).forEach(([ticker, analyses]) => {
+      if (Array.isArray(analyses)) {
+        analyses.forEach(analysis => {
+          parsed.push({
+            ticker,
+            analyst: getAnalystDisplayName(analysis.agent_name),
+            signal: analysis.signal,
+            confidence: analysis.confidence,
+            reasoning: analysis.reasoning
+          });
+        });
+      }
+    });
+    
+    return parsed;
+  };
+
+  const analysisData = parseResults();
+
+  // 获取信号颜色和图标
+  const getSignalInfo = (signal) => {
+    const normalizedSignal = signal?.toLowerCase() || '';
+    if (normalizedSignal.includes('买入') || normalizedSignal.includes('buy')) {
+      return { 
+        color: '#4caf50', 
+        icon: '📈', 
+        text: '买入', 
+        bgColorLight: '#e8f5e9',
+        bgColorDark: 'rgba(76, 175, 80, 0.2)'
+      };
+    } else if (normalizedSignal.includes('卖出') || normalizedSignal.includes('sell')) {
+      return { 
+        color: '#f44336', 
+        icon: '📉', 
+        text: '卖出', 
+        bgColorLight: '#ffebee',
+        bgColorDark: 'rgba(244, 67, 54, 0.2)'
+      };
+    } else {
+      return { 
+        color: '#ff9800', 
+        icon: '➖', 
+        text: '中性', 
+        bgColorLight: '#fff3e0',
+        bgColorDark: 'rgba(255, 152, 0, 0.2)'
+      };
+    }
+  };
+
+  // 筛选和排序数据
+  const filteredData = analysisData.filter(item => {
+    if (filterSignal === 'all') return true;
+    const signalInfo = getSignalInfo(item.signal);
+    return signalInfo.text.includes(filterSignal === 'buy' ? '买入' : filterSignal === 'sell' ? '卖出' : '中性');
+  });
+
+  const sortedData = [...filteredData].sort((a, b) => {
+    if (sortBy === 'confidence') return b.confidence - a.confidence;
+    if (sortBy === 'signal') return a.signal.localeCompare(b.signal);
+    if (sortBy === 'analyst') return a.analyst.localeCompare(b.analyst);
+    return 0;
+  });
+
+  // 统计信息
+  const stats = {
+    total: analysisData.length,
+    buy: analysisData.filter(item => getSignalInfo(item.signal).text.includes('买入')).length,
+    sell: analysisData.filter(item => getSignalInfo(item.signal).text.includes('卖出')).length,
+    neutral: analysisData.filter(item => getSignalInfo(item.signal).text.includes('中性')).length,
+    avgConfidence: Math.round(analysisData.reduce((sum, item) => sum + item.confidence, 0) / analysisData.length || 0)
+  };
+
+  const toggleCardExpansion = (index) => {
+    const newExpanded = new Set(expandedCards);
+    if (newExpanded.has(index)) {
+      newExpanded.delete(index);
+    } else {
+      newExpanded.add(index);
+    }
+    setExpandedCards(newExpanded);
+  };
+
   return (
     <Box>
-      <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      {/* 头部控制区 */}
+      <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
         <Typography variant="h6">
           股票分析结果 ({new Date().toISOString().split('T')[0]})
         </Typography>
@@ -561,33 +668,325 @@ function AnalysisResults({ results, onNewAnalysis }) {
           重新分析
         </Button>
       </Box>
-      
-      {/* 原始数据 */}
-      <Card>
-        <CardContent>
-          <Typography variant="h6" gutterBottom>
-            原始数据 (JSON 格式)
-          </Typography>
-          <Box sx={{ 
-            backgroundColor: (theme) => theme.palette.mode === 'dark' ? '#1e1e1e' : '#f5f5f5',
+
+      {/* 统计概览 */}
+      <Grid container spacing={2} sx={{ mb: 3 }}>
+        <Grid item xs={6} md={3}>
+          <Card sx={{ p: 2, textAlign: 'center' }}>
+            <Typography variant="h6" color="primary">{stats.total}</Typography>
+            <Typography variant="body2">总分析数</Typography>
+          </Card>
+        </Grid>
+        <Grid item xs={6} md={3}>
+          <Card sx={{ 
             p: 2, 
-            borderRadius: 1, 
-            maxHeight: '600px', 
-            overflowY: 'auto',
-            fontFamily: 'monospace'
+            textAlign: 'center', 
+            bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(76, 175, 80, 0.1)' : '#e8f5e9',
+            border: (theme) => theme.palette.mode === 'dark' ? '1px solid rgba(76, 175, 80, 0.3)' : 'none'
           }}>
-            <pre style={{ 
-              margin: 0, 
-              whiteSpace: 'pre-wrap', 
-              fontSize: '0.875rem',
-              lineHeight: 1.4,
-              color: (theme) => theme.palette.mode === 'dark' ? '#fff' : 'inherit'
-            }}>
-              {JSON.stringify(results, null, 2)}
-            </pre>
-          </Box>
+            <Typography variant="h6" sx={{ color: '#4caf50' }}>📈 {stats.buy}</Typography>
+            <Typography variant="body2">买入信号</Typography>
+          </Card>
+        </Grid>
+        <Grid item xs={6} md={3}>
+          <Card sx={{ 
+            p: 2, 
+            textAlign: 'center', 
+            bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(244, 67, 54, 0.1)' : '#ffebee',
+            border: (theme) => theme.palette.mode === 'dark' ? '1px solid rgba(244, 67, 54, 0.3)' : 'none'
+          }}>
+            <Typography variant="h6" sx={{ color: '#f44336' }}>📉 {stats.sell}</Typography>
+            <Typography variant="body2">卖出信号</Typography>
+          </Card>
+        </Grid>
+        <Grid item xs={6} md={3}>
+          <Card sx={{ p: 2, textAlign: 'center' }}>
+            <Typography variant="h6" color="primary">{stats.avgConfidence}%</Typography>
+            <Typography variant="body2">平均置信度</Typography>
+          </Card>
+        </Grid>
+      </Grid>
+
+      {/* 控制选项 */}
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <Grid container spacing={2} alignItems="center">
+            <Grid item xs={12} md={3}>
+              <Typography variant="subtitle2" gutterBottom>显示模式</Typography>
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <Button 
+                  size="small" 
+                  variant={viewMode === 'cards' ? 'contained' : 'outlined'}
+                  onClick={() => setViewMode('cards')}
+                >
+                  卡片
+                </Button>
+                <Button 
+                  size="small" 
+                  variant={viewMode === 'table' ? 'contained' : 'outlined'}
+                  onClick={() => setViewMode('table')}
+                >
+                  表格
+                </Button>
+                <Button 
+                  size="small" 
+                  variant={viewMode === 'raw' ? 'contained' : 'outlined'}
+                  onClick={() => setViewMode('raw')}
+                >
+                  原始数据
+                </Button>
+              </Box>
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <Typography variant="subtitle2" gutterBottom>筛选信号</Typography>
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <Chip 
+                  label="全部" 
+                  onClick={() => setFilterSignal('all')}
+                  color={filterSignal === 'all' ? 'primary' : 'default'}
+                  size="small"
+                />
+                <Chip 
+                  label="买入" 
+                  onClick={() => setFilterSignal('buy')}
+                  color={filterSignal === 'buy' ? 'success' : 'default'}
+                  size="small"
+                />
+                <Chip 
+                  label="卖出" 
+                  onClick={() => setFilterSignal('sell')}
+                  color={filterSignal === 'sell' ? 'error' : 'default'}
+                  size="small"
+                />
+                <Chip 
+                  label="中性" 
+                  onClick={() => setFilterSignal('neutral')}
+                  color={filterSignal === 'neutral' ? 'warning' : 'default'}
+                  size="small"
+                />
+              </Box>
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <Typography variant="subtitle2" gutterBottom>排序方式</Typography>
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <Chip 
+                  label="置信度" 
+                  onClick={() => setSortBy('confidence')}
+                  color={sortBy === 'confidence' ? 'primary' : 'default'}
+                  size="small"
+                />
+                <Chip 
+                  label="信号" 
+                  onClick={() => setSortBy('signal')}
+                  color={sortBy === 'signal' ? 'primary' : 'default'}
+                  size="small"
+                />
+                <Chip 
+                  label="分析师" 
+                  onClick={() => setSortBy('analyst')}
+                  color={sortBy === 'analyst' ? 'primary' : 'default'}
+                  size="small"
+                />
+              </Box>
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <Typography variant="subtitle2" gutterBottom>数据统计</Typography>
+              <Typography variant="body2" color="text.secondary">
+                显示 {sortedData.length} / {analysisData.length} 条结果
+              </Typography>
+            </Grid>
+          </Grid>
         </CardContent>
       </Card>
+
+      {/* 内容展示区 */}
+      {viewMode === 'cards' && (
+        <Grid container spacing={2}>
+          {sortedData.map((item, index) => {
+            const signalInfo = getSignalInfo(item.signal);
+            const isExpanded = expandedCards.has(index);
+            
+            return (
+              <Grid item xs={12} md={6} lg={4} key={index}>
+                <Card 
+                  sx={{ 
+                    borderLeft: `4px solid ${signalInfo.color}`,
+                    transition: 'all 0.2s',
+                    '&:hover': { 
+                      boxShadow: 3,
+                      transform: 'translateY(-2px)'
+                    }
+                  }}
+                >
+                  <CardContent>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                      <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        {item.ticker}
+                        <Chip 
+                          icon={<span>{signalInfo.icon}</span>}
+                          label={signalInfo.text}
+                          size="small"
+                          sx={{ 
+                            bgcolor: (theme) => theme.palette.mode === 'dark' ? signalInfo.bgColorDark : signalInfo.bgColorLight,
+                            color: signalInfo.color,
+                            fontWeight: 'bold'
+                          }}
+                        />
+                      </Typography>
+                      <Typography variant="h6" sx={{ color: signalInfo.color, fontWeight: 'bold' }}>
+                        {item.confidence}%
+                      </Typography>
+                    </Box>
+                    
+                    <Typography variant="body2" color="text.secondary" gutterBottom>
+                      分析师：{item.analyst}
+                    </Typography>
+                    
+                    {/* 置信度进度条 */}
+                    <Box sx={{ mb: 2 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                        <Typography variant="caption">置信度</Typography>
+                        <Typography variant="caption">{item.confidence}%</Typography>
+                      </Box>
+                      <LinearProgress 
+                        variant="determinate" 
+                        value={item.confidence} 
+                        sx={{
+                          height: 8,
+                          borderRadius: 4,
+                          '.MuiLinearProgress-bar': {
+                            backgroundColor: signalInfo.color
+                          }
+                        }}
+                      />
+                    </Box>
+                    
+                    {/* 分析理由 */}
+                    <Box>
+                      <Typography variant="body2" sx={{ 
+                        display: '-webkit-box',
+                        WebkitLineClamp: isExpanded ? 'none' : 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                        mb: 1
+                      }}>
+                        {item.reasoning}
+                      </Typography>
+                      <Button 
+                        size="small" 
+                        onClick={() => toggleCardExpansion(index)}
+                        sx={{ p: 0, minWidth: 'auto' }}
+                      >
+                        {isExpanded ? '收起' : '展开'}
+                      </Button>
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+            );
+          })}
+        </Grid>
+      )}
+
+      {viewMode === 'table' && (
+        <Card>
+          <CardContent>
+            <Box sx={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ borderBottom: '2px solid #e0e0e0' }}>
+                    <th style={{ padding: '12px', textAlign: 'left' }}>股票</th>
+                    <th style={{ padding: '12px', textAlign: 'left' }}>分析师</th>
+                    <th style={{ padding: '12px', textAlign: 'center' }}>信号</th>
+                    <th style={{ padding: '12px', textAlign: 'center' }}>置信度</th>
+                    <th style={{ padding: '12px', textAlign: 'left' }}>分析理由</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sortedData.map((item, index) => {
+                    const signalInfo = getSignalInfo(item.signal);
+                    return (
+                      <tr key={index} style={{ borderBottom: '1px solid #f0f0f0' }}>
+                        <td style={{ padding: '12px', fontWeight: 'bold' }}>{item.ticker}</td>
+                        <td style={{ padding: '12px' }}>{item.analyst}</td>
+                        <td style={{ padding: '12px', textAlign: 'center' }}>
+                          <Chip 
+                            icon={<span>{signalInfo.icon}</span>}
+                            label={signalInfo.text}
+                            size="small"
+                            sx={{ 
+                              bgcolor: (theme) => theme.palette.mode === 'dark' ? signalInfo.bgColorDark : signalInfo.bgColorLight,
+                              color: signalInfo.color,
+                              fontWeight: 'bold'
+                            }}
+                          />
+                        </td>
+                        <td style={{ padding: '12px', textAlign: 'center' }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
+                            <LinearProgress 
+                              variant="determinate" 
+                              value={item.confidence} 
+                              sx={{
+                                width: 60,
+                                height: 6,
+                                borderRadius: 3,
+                                '.MuiLinearProgress-bar': {
+                                  backgroundColor: signalInfo.color
+                                }
+                              }}
+                            />
+                            <Typography variant="body2" sx={{ color: signalInfo.color, fontWeight: 'bold' }}>
+                              {item.confidence}%
+                            </Typography>
+                          </Box>
+                        </td>
+                        <td style={{ padding: '12px', maxWidth: '300px' }}>
+                          <Typography variant="body2" sx={{ 
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden'
+                          }}>
+                            {item.reasoning}
+                          </Typography>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </Box>
+          </CardContent>
+        </Card>
+      )}
+
+      {viewMode === 'raw' && (
+        <Card>
+          <CardContent>
+            <Typography variant="h6" gutterBottom>
+              原始数据 (JSON 格式)
+            </Typography>
+            <Box sx={{ 
+              backgroundColor: (theme) => theme.palette.mode === 'dark' ? '#1e1e1e' : '#f5f5f5',
+              p: 2, 
+              borderRadius: 1, 
+              maxHeight: '600px', 
+              overflowY: 'auto',
+              fontFamily: 'monospace'
+            }}>
+              <pre style={{ 
+                margin: 0, 
+                whiteSpace: 'pre-wrap', 
+                fontSize: '0.875rem',
+                lineHeight: 1.4,
+                color: (theme) => theme.palette.mode === 'dark' ? '#fff' : 'inherit'
+              }}>
+                {JSON.stringify(results, null, 2)}
+              </pre>
+            </Box>
+          </CardContent>
+        </Card>
+      )}
     </Box>
   );
 }
