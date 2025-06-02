@@ -17,7 +17,6 @@ from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
-from flask_sock import Sock
 import queue
 import io
 import contextlib
@@ -49,37 +48,20 @@ import traceback
 # right after your imports and before functions that use it
 # (around line 40 after the imports and before start_api_server)
 
-# 全局WebSocket客户端列表
-# Add a global function for server-wide logging to websocket clients
-websocket_clients = []
-
-def broadcast_log(message, level="info"):
-    """
-    广播日志消息到所有WebSocket客户端
-    Broadcast log message to all WebSocket clients
-    """
-    # Send to WebSocket clients
-    log_data = {"level": level, "message": message}
-    for client in websocket_clients[:]:
-        try:
-            client.send(json.dumps(log_data))
-        except Exception:
-            websocket_clients.remove(client)
-
-# 创建自定义进度处理器，将消息转发到websocket
-# Create a custom progress handler that forwards to websocket
+# 创建自定义进度处理器 - 简化版本，移除WebSocket转发
+# Create a custom progress handler - simplified version without WebSocket forwarding
 class WebUIProgressHandler:
     """
-    Web UI进度处理器 - 处理分析过程中的状态更新
-    Web UI progress handler - Handles status updates during analysis process
+    Web UI进度处理器 - 处理分析过程中的状态更新（简化版）
+    Web UI progress handler - Handles status updates during analysis process (simplified)
     """
     def __init__(self):
         pass
         
     def update_status(self, agent, ticker, status):
         """
-        更新分析状态并广播给客户端
-        Update analysis status and broadcast to clients
+        更新分析状态并打印到控制台
+        Update analysis status and print to console
         """
         # Format the status message
         if ticker:
@@ -87,23 +69,23 @@ class WebUIProgressHandler:
         else:
             message = f"[{agent}] {status}"
         
-        # Broadcast to all websocket clients
-        broadcast_log(message, "info")
+        # 只打印到控制台，不再广播 - Only print to console, no more broadcasting
+        print(message)
         
     def start(self):
         """开始分析过程 - Start analysis process"""
-        broadcast_log("Starting analysis process", "info")
+        print("Starting analysis process")
         
     def complete(self):
         """完成分析过程 - Complete analysis process"""
-        broadcast_log("Analysis process completed", "success")
+        print("Analysis process completed")
 
-# 捕获所有Python输出的详细日志记录器
-# Class to capture all Python output including LLM responses
+# 捕获所有Python输出的详细日志记录器 - 简化版本
+# Class to capture all Python output including LLM responses - simplified version
 class VerboseLogger:
     """
-    详细日志记录器 - 捕获函数执行过程中的所有输出
-    Verbose logger - Captures all output during function execution
+    详细日志记录器 - 捕获函数执行过程中的所有输出（简化版）
+    Verbose logger - Captures all output during function execution (simplified)
     """
     def __init__(self, original_func):
         self.original_func = original_func
@@ -114,7 +96,7 @@ class VerboseLogger:
         Wrap function call to capture and log all output
         """
         # Log the start of the function
-        broadcast_log(f"Starting {self.original_func.__name__} with args: {args}", "info")
+        print(f"Starting {self.original_func.__name__} with args: {args}")
         
         # Store original stdout and stderr
         original_stdout = sys.stdout
@@ -136,24 +118,24 @@ class VerboseLogger:
             stdout_content = stdout_buffer.getvalue()
             stderr_content = stderr_buffer.getvalue()
             
-            # Log detailed output
+            # Log detailed output - 只打印，不再广播
             if stdout_content:
                 for line in stdout_content.split('\n'):
                     if line.strip():
-                        broadcast_log(line, "info")
+                        print(line)
             
             if stderr_content:
                 for line in stderr_content.split('\n'):
                     if line.strip():
-                        broadcast_log(line, "error")
+                        print(line, file=sys.stderr)
             
             # Return the result
             return result
         
         except Exception as e:
             # Log exception
-            broadcast_log(f"Error in {self.original_func.__name__}: {str(e)}", "error")
-            broadcast_log(traceback.format_exc(), "error")
+            print(f"Error in {self.original_func.__name__}: {str(e)}", file=sys.stderr)
+            print(traceback.format_exc(), file=sys.stderr)
             raise
         
         finally:
@@ -161,12 +143,12 @@ class VerboseLogger:
             sys.stdout = original_stdout
             sys.stderr = original_stderr
 
-# 输出分流器类 - 同时输出到原始流和缓冲区
-# Class to tee output to both original stream and buffer
+# 输出分流器类 - 同时输出到原始流和缓冲区 - 简化版本
+# Class to tee output to both original stream and buffer - simplified version
 class StdoutTee:
     """
-    标准输出分流器 - 将输出同时发送到原始流和缓冲区
-    Standard output tee - Sends output to both original stream and buffer
+    标准输出分流器 - 将输出同时发送到原始流和缓冲区（简化版）
+    Standard output tee - Sends output to both original stream and buffer (simplified)
     """
     def __init__(self, original_stream, buffer):
         self.original_stream = original_stream
@@ -177,9 +159,7 @@ class StdoutTee:
         self.original_stream.write(text)
         self.buffer.write(text)
         
-        # Forward to WebSocket clients immediately
-        if text.strip():
-            broadcast_log(text.strip(), "info")
+        # 移除WebSocket客户端转发 - Remove WebSocket client forwarding
     
     def flush(self):
         """刷新输出流 - Flush output streams"""
@@ -224,18 +204,17 @@ def start_api_server(host=DEFAULT_HOST, port=API_PORT):
 
     app = Flask(__name__)
     CORS(app, resources={r"/*": {"origins": "*"}})  # Allow requests from any origin
-    sock = Sock(app)
 
     # 控制台输出队列
     # Queue for console output
     console_queue = queue.Queue()
 
-    # 控制台输出捕获器
-    # Capture stdout/stderr
+    # 控制台输出捕获器 - 简化版本
+    # Capture stdout/stderr - simplified version
     class ConsoleCapture:
         """
-        控制台输出捕获器 - 捕获并转发控制台输出到队列
-        Console output capturer - Captures and forwards console output to queue
+        控制台输出捕获器 - 捕获控制台输出（简化版）
+        Console output capturer - Captures console output (simplified)
         """
         def __init__(self):
             self.stdout = sys.stdout
@@ -243,28 +222,17 @@ def start_api_server(host=DEFAULT_HOST, port=API_PORT):
             self.output = io.StringIO()
             
         def write(self, text):
-            """写入文本并发送到队列 - Write text and send to queue"""
+            """写入文本 - Write text"""
             self.stdout.write(text)
             self.output.write(text)
-            if text.strip():  # Only send non-empty lines
-                console_queue.put({
-                    'level': 'error' if self == sys.stderr else 'info',
-                    'message': text.strip()
-                })
+            # 移除队列发送 - Remove queue sending
         
         def flush(self):
             """刷新输出流 - Flush output streams"""
             self.stdout.flush()
 
-    # Redirect stdout/stderr to our capture
-    sys.stdout = ConsoleCapture()
-    sys.stderr = ConsoleCapture()
+    # 移除WebSocket相关的标准输出重定向 - Remove WebSocket-related stdout redirection
 
-    # Replace the default progress handler with our web UI version
-    from utils.progress import progress
-    progress.handler = WebUIProgressHandler()
-
-    # API endpoints
     @app.route('/api/models', methods=['GET'])
     def get_models():
         """
@@ -439,26 +407,6 @@ def start_api_server(host=DEFAULT_HOST, port=API_PORT):
             "groq_api_configured": bool(os.getenv("GROQ_API_KEY")),
             "gemini_api_configured": bool(os.getenv("GEMINI_API_KEY")),
         })
-
-    # WebSocket endpoint for logs
-    @sock.route('/ws/logs')
-    def logs(ws):
-        websocket_clients.append(ws)
-        print(f"WebSocket client connected. Total clients: {len(websocket_clients)}")
-        
-        try:
-            # Keep the connection open
-            while True:
-                message = ws.receive()
-                # We don't expect messages from clients, but handle them anyway
-                if message:
-                    print(f"Received from client: {message}")
-        except Exception as e:
-            print(f"WebSocket error: {e}")
-        finally:
-            if ws in websocket_clients:
-                websocket_clients.remove(ws)
-            print(f"WebSocket client disconnected. Remaining clients: {len(websocket_clients)}")
 
     print(f"Starting API server at http://{host}:{port}")
     app.run(host=host, port=port, debug=True, use_reloader=False)
@@ -786,7 +734,7 @@ def run_hedge_fund_for_web(tickers, selected_analysts, start_date=None, end_date
         # Fallback if no start method exists
         pass
         
-    broadcast_log("Starting analysis process", "info")
+    print("Starting analysis process")
     
     # 移除了 get_model_info 的调用，model_provider 固定为 OpenAI
     # Removed call to get_model_info, model_provider is fixed to OpenAI.
@@ -794,7 +742,7 @@ def run_hedge_fund_for_web(tickers, selected_analysts, start_date=None, end_date
     model_provider = "OpenAI" # model_info.provider.value if model_info else "Unknown"
     # 固定使用 GPT-4o 模型 - Fixed to use GPT-4o model
     model_name = "gpt-4o"
-    # broadcast_log(f"Using model: {model_name} ({model_provider})", "info") 
+    # print(f"Using model: {model_name} ({model_provider})") 
     
     # Create portfolio
     portfolio = {
@@ -822,8 +770,8 @@ def run_hedge_fund_for_web(tickers, selected_analysts, start_date=None, end_date
         }
     }
     
-    broadcast_log(f"Analyzing tickers: {tickers}", "info")
-    broadcast_log(f"Using analysts: {selected_analysts}", "info")
+    print(f"Analyzing tickers: {tickers}")
+    print(f"Using analysts: {selected_analysts}")
     
     # Process each analyst manually to bypass the workflow issues
     from src.agents.warren_buffett import warren_buffett_agent
@@ -851,7 +799,7 @@ def run_hedge_fund_for_web(tickers, selected_analysts, start_date=None, end_date
     # 运行每个选定的分析师
     for analyst_name in selected_analysts:
         if analyst_name in agent_map:
-            broadcast_log(f"Running analyst: {analyst_name}", "info")
+            print(f"Running analyst: {analyst_name}")
             try:
                 agent_fn = agent_map[analyst_name]
                 result = agent_fn(AgentState(state))
@@ -864,10 +812,10 @@ def run_hedge_fund_for_web(tickers, selected_analysts, start_date=None, end_date
                         state["data"] = result["data"]
                     
                 
-                broadcast_log(f"Completed {analyst_name} analysis", "success")
+                print(f"Completed {analyst_name} analysis")
             except Exception as e:
-                broadcast_log(f"Error in {analyst_name}: {str(e)}", "error")
-                broadcast_log(traceback.format_exc(), "error")
+                print(f"Error in {analyst_name}: {str(e)}", file=sys.stderr)
+                print(traceback.format_exc(), file=sys.stderr)
     
     # 准备最终输出 - 新的数组格式
     # Prepare the final output - new array format
@@ -910,7 +858,7 @@ def run_hedge_fund_for_web(tickers, selected_analysts, start_date=None, end_date
             
             result["ticker_analyses"][ticker].append(analyst_result)
     
-    broadcast_log("Analysis completed successfully", "success")
+    print("Analysis completed successfully")
     
     return result
 
