@@ -181,41 +181,41 @@ def analyze_fundamentals(metrics: list) -> dict[str, any]:
     roe = getattr(latest_metrics, 'return_on_equity', None)
     if roe and roe > 0.15:  # 15% ROE threshold
         score += 2
-        reasoning.append(f"强劲的ROE：{roe:.1%} / Strong ROE of {roe:.1%}")
+        reasoning.append(f"强劲的ROE：{roe:.1%}")
     elif roe:
-        reasoning.append(f"较弱的ROE：{roe:.1%} / Weak ROE of {roe:.1%}")
+        reasoning.append(f"较弱的ROE：{roe:.1%}")
     else:
-        reasoning.append("ROE数据不可用 / ROE data not available")
+        reasoning.append("ROE数据不可用")
 
     # 检查负债权益比 / Check Debt to Equity
     debt_to_equity = getattr(latest_metrics, 'debt_to_equity', None)
     if debt_to_equity and debt_to_equity < 0.5:
         score += 2
-        reasoning.append("保守的债务水平 / Conservative debt levels")
+        reasoning.append("保守的债务水平")
     elif debt_to_equity:
-        reasoning.append(f"较高的负债权益比：{debt_to_equity:.1f} / High debt to equity ratio of {debt_to_equity:.1f}")
+        reasoning.append(f"较高的负债权益比：{debt_to_equity:.1f}")
     else:
-        reasoning.append("负债权益比数据不可用 / Debt to equity data not available")
+        reasoning.append("负债权益比数据不可用")
 
     # 检查营业利润率 / Check Operating Margin
     operating_margin = getattr(latest_metrics, 'operating_margin', None)
     if operating_margin and operating_margin > 0.15:
         score += 2
-        reasoning.append("强劲的营业利润率 / Strong operating margins")
+        reasoning.append("强劲的营业利润率")
     elif operating_margin:
-        reasoning.append(f"较弱的营业利润率：{operating_margin:.1%} / Weak operating margin of {operating_margin:.1%}")
+        reasoning.append(f"较弱的营业利润率：{operating_margin:.1%}")
     else:
-        reasoning.append("营业利润率数据不可用 / Operating margin data not available")
+        reasoning.append("营业利润率数据不可用")
 
     # 检查流动比率 / Check Current Ratio
     current_ratio = getattr(latest_metrics, 'current_ratio', None)
     if current_ratio and current_ratio > 1.5:
         score += 1
-        reasoning.append("良好的流动性状况 / Good liquidity position")
+        reasoning.append("良好的流动性状况")
     elif current_ratio:
-        reasoning.append(f"较弱的流动性，流动比率为{current_ratio:.1f} / Weak liquidity with current ratio of {current_ratio:.1f}")
+        reasoning.append(f"较弱的流动性，流动比率为{current_ratio:.1f}")
     else:
-        reasoning.append("流动比率数据不可用 / Current ratio data not available")
+        reasoning.append("流动比率数据不可用")
 
     return {"score": score, "details": "; ".join(reasoning), "metrics": latest_metrics.model_dump()}
 
@@ -223,7 +223,7 @@ def analyze_fundamentals(metrics: list) -> dict[str, any]:
 def analyze_consistency(financial_line_items: list) -> dict[str, any]:
     """分析盈利一致性和增长 / Analyze earnings consistency and growth."""
     if len(financial_line_items) < 2:  # 至少需要2个期间进行基本分析 / Need at least 2 periods for basic analysis
-        return {"score": 0, "details": "历史数据不足（需要至少2个期间）/ Insufficient historical data (need at least 2 periods)"}
+        return {"score": 0, "details": "历史数据不足（需要至少2个期间）"}
 
     score = 0
     reasoning = []
@@ -235,20 +235,20 @@ def analyze_consistency(financial_line_items: list) -> dict[str, any]:
         # 计算从最旧到最新的总增长率 / Calculate total growth rate from oldest to latest
         if len(earnings_values) >= 2 and earnings_values[-1] != 0:
             growth_rate = (earnings_values[0] - earnings_values[-1]) / abs(earnings_values[-1])
-            reasoning.append(f"过去{len(earnings_values)}个期间的总盈利增长：{growth_rate:.1%} / Total earnings growth of {growth_rate:.1%} over past {len(earnings_values)} periods")
+            reasoning.append(f"过去{len(earnings_values)}个期间的总盈利增长：{growth_rate:.1%}")
             
             # 基于增长率给分，更保守的评分 / Score based on growth rate, more conservative scoring
             if growth_rate > 1.0:  # 100%以上增长才给最高分 / >100% growth for max score
                 score += 2
-                reasoning.append("盈利强劲增长 / Strong earnings growth")
+                reasoning.append("盈利强劲增长")
             elif growth_rate > 0.3:  # 30%以上增长 / >30% growth
                 score += 1
-                reasoning.append("盈利良好增长 / Good earnings growth")
+                reasoning.append("盈利良好增长")
             elif growth_rate > 0:  # 正增长 / Positive growth
                 score += 0.5
-                reasoning.append("盈利正增长 / Positive earnings growth")
+                reasoning.append("盈利正增长")
             else:
-                reasoning.append("盈利下降或无增长 / Earnings decline or no growth")
+                reasoning.append("盈利下降或无增长")
         
         # 如果有足够数据进行趋势分析 / If enough data for trend analysis
         if len(earnings_values) >= 3:
@@ -256,21 +256,21 @@ def analyze_consistency(financial_line_items: list) -> dict[str, any]:
             positive_periods = sum(1 for e in earnings_values if e > 0)
             if positive_periods >= len(earnings_values) * 0.8:  # 80%的期间为正 / 80% of periods positive
                 score += 1
-                reasoning.append("盈利一致性良好（大部分期间为正）/ Good earnings consistency (most periods positive)")
+                reasoning.append("盈利一致性良好（大部分期间为正）")
             elif positive_periods >= len(earnings_values) * 0.6:  # 60%的期间为正 / 60% of periods positive
                 score += 0.5
-                reasoning.append("盈利一致性一般 / Moderate earnings consistency")
+                reasoning.append("盈利一致性一般")
             else:
-                reasoning.append("盈利一致性较差 / Poor earnings consistency")
+                reasoning.append("盈利一致性较差")
         
         # 如果有4个或更多期间，检查连续增长 / If 4+ periods, check for consecutive growth
         if len(earnings_values) >= 4:
             consecutive_growth = all(earnings_values[i] > earnings_values[i + 1] for i in range(len(earnings_values) - 1))
             if consecutive_growth:
                 score += 1  # 连续增长奖励分 / Consecutive growth bonus
-                reasoning.append("过去所有期间盈利连续增长 / Consecutive earnings growth across all periods")
+                reasoning.append("过去所有期间盈利连续增长")
     else:
-        reasoning.append("趋势分析的盈利数据不足 / Insufficient earnings data for trend analysis")
+        reasoning.append("趋势分析的盈利数据不足")
 
     # 确保最高分不超过3分，保持在合理范围内 / Ensure max score doesn't exceed 3 points
     final_score = min(3, score)
@@ -292,7 +292,7 @@ def analyze_moat(metrics: list) -> dict[str, any]:
     or high margin over the last few years. Higher stability => higher moat score.
     """
     if not metrics:
-        return {"score": 0, "max_score": 3, "details": "护城河分析数据不足 / Insufficient data for moat analysis"}
+        return {"score": 0, "max_score": 3, "details": "护城河分析数据不足"}
 
     reasoning = []
     moat_score = 0
@@ -315,20 +315,20 @@ def analyze_moat(metrics: list) -> dict[str, any]:
         latest_roe = getattr(latest_metrics, 'return_on_equity', None)
         if latest_roe and latest_roe > 0.20:  # 20% ROE threshold for limited data
             moat_score += 1
-            reasoning.append(f"当前ROE优秀：{latest_roe:.1%}（数据有限但表现强劲）/ Current ROE excellent: {latest_roe:.1%} (limited data but strong performance)")
+            reasoning.append(f"当前ROE优秀：{latest_roe:.1%}（数据有限但表现强劲）")
         elif latest_roe and latest_roe > 0.15:
-            reasoning.append(f"当前ROE良好：{latest_roe:.1%} / Current ROE good: {latest_roe:.1%}")
+            reasoning.append(f"当前ROE良好：{latest_roe:.1%}")
         
         # 检查最新的营业利润率 / Check latest operating margin
         latest_margin = getattr(latest_metrics, 'operating_margin', None)
         if latest_margin and latest_margin > 0.20:  # 20% margin threshold for limited data
             moat_score += 1
-            reasoning.append(f"当前营业利润率优秀：{latest_margin:.1%}（数据有限但表现强劲）/ Current operating margin excellent: {latest_margin:.1%} (limited data but strong performance)")
+            reasoning.append(f"当前营业利润率优秀：{latest_margin:.1%}（数据有限但表现强劲）")
         elif latest_margin and latest_margin > 0.15:
-            reasoning.append(f"当前营业利润率良好：{latest_margin:.1%} / Current operating margin good: {latest_margin:.1%}")
+            reasoning.append(f"当前营业利润率良好：{latest_margin:.1%}")
         
         if moat_score == 0:
-            reasoning.append("基于有限数据，未发现明显护城河迹象 / Based on limited data, no clear moat indicators found")
+            reasoning.append("基于有限数据，未发现明显护城河迹象")
         
         return {
             "score": moat_score,
@@ -344,21 +344,21 @@ def analyze_moat(metrics: list) -> dict[str, any]:
             stable_roe = all(r > 0.15 for r in historical_roes)
             if stable_roe:
                 moat_score += 1
-                reasoning.append("各期间ROE稳定在15%以上（表明有护城河）/ Stable ROE above 15% across periods (suggests moat)")
+                reasoning.append("各期间ROE稳定在15%以上（表明有护城河）")
             else:
-                reasoning.append("ROE未持续保持在15%以上 / ROE not consistently above 15%")
+                reasoning.append("ROE未持续保持在15%以上")
         else:
             # 只有2个期间：检查是否都高于15%且有改善 / Only 2 periods: check if both above 15% and improving
             if all(r > 0.15 for r in historical_roes):
                 if historical_roes[0] >= historical_roes[1]:  # 最新 >= 较旧
                     moat_score += 1
-                    reasoning.append("ROE保持在15%以上且稳定/改善 / ROE maintained above 15% and stable/improving")
+                    reasoning.append("ROE保持在15%以上且稳定/改善")
                 else:
-                    reasoning.append("ROE高但有下降趋势 / ROE high but declining trend")
+                    reasoning.append("ROE高但有下降趋势")
             else:
-                reasoning.append("ROE未持续保持在15%以上 / ROE not consistently above 15%")
+                reasoning.append("ROE未持续保持在15%以上")
     else:
-        reasoning.append("ROE数据不足 / Insufficient ROE data")
+        reasoning.append("ROE数据不足")
 
     # 检查稳定或改善的营业利润率 / Check for stable or improving operating margin
     if len(historical_margins) >= 2:
@@ -367,26 +367,26 @@ def analyze_moat(metrics: list) -> dict[str, any]:
             stable_margin = all(m > 0.15 for m in historical_margins)
             if stable_margin:
                 moat_score += 1
-                reasoning.append("营业利润率稳定在15%以上（护城河指标）/ Stable operating margins above 15% (moat indicator)")
+                reasoning.append("营业利润率稳定在15%以上（护城河指标）")
             else:
-                reasoning.append("营业利润率未持续保持在15%以上 / Operating margin not consistently above 15%")
+                reasoning.append("营业利润率未持续保持在15%以上")
         else:
             # 只有2个期间：检查是否都高于15%且有改善 / Only 2 periods: check if both above 15% and improving
             if all(m > 0.15 for m in historical_margins):
                 if historical_margins[0] >= historical_margins[1]:  # 最新 >= 较旧
                     moat_score += 1
-                    reasoning.append("营业利润率保持在15%以上且稳定/改善 / Operating margin maintained above 15% and stable/improving")
+                    reasoning.append("营业利润率保持在15%以上且稳定/改善")
                 else:
-                    reasoning.append("营业利润率高但有下降趋势 / Operating margin high but declining trend")
+                    reasoning.append("营业利润率高但有下降趋势")
             else:
-                reasoning.append("营业利润率未持续保持在15%以上 / Operating margin not consistently above 15%")
+                reasoning.append("营业利润率未持续保持在15%以上")
     else:
-        reasoning.append("营业利润率数据不足 / Insufficient operating margin data")
+        reasoning.append("营业利润率数据不足")
 
     # 如果两者都稳定/改善，加一分 / If both are stable/improving, add an extra point
     if moat_score == 2:
         moat_score += 1
-        reasoning.append("ROE和利润率的稳定性都表明有坚固的护城河 / Both ROE and margin stability indicate a solid moat")
+        reasoning.append("ROE和利润率的稳定性都表明有坚固的护城河")
 
     return {
         "score": moat_score,
@@ -409,7 +409,7 @@ def analyze_management_quality(financial_line_items: list) -> dict[str, any]:
         if there's a big new issuance, it might be a negative sign (dilution).
     """
     if not financial_line_items:
-        return {"score": 0, "max_score": 2, "details": "管理层分析数据不足 / Insufficient data for management analysis"}
+        return {"score": 0, "max_score": 2, "details": "管理层分析数据不足"}
 
     reasoning = []
     mgmt_score = 0
@@ -419,21 +419,21 @@ def analyze_management_quality(financial_line_items: list) -> dict[str, any]:
     if equity_issuance and equity_issuance < 0:
         # 负值意味着公司在回购上花钱 / Negative means the company spent money on buybacks
         mgmt_score += 1
-        reasoning.append("公司一直在回购股票（对股东友好）/ Company has been repurchasing shares (shareholder-friendly)")
+        reasoning.append("公司一直在回购股票（对股东友好）")
 
     if equity_issuance and equity_issuance > 0:
         # 正发行意味着新股份 => 可能稀释 / Positive issuance means new shares => possible dilution
-        reasoning.append("最近有普通股发行（潜在稀释）/ Recent common stock issuance (potential dilution)")
+        reasoning.append("最近有普通股发行（潜在稀释）")
     else:
-        reasoning.append("未检测到重大新股发行 / No significant new stock issuance detected")
+        reasoning.append("未检测到重大新股发行")
 
     # 检查任何股息 / Check for any dividends
     dividends = getattr(latest, "dividends_and_other_cash_distributions", None)
     if dividends and dividends < 0:
         mgmt_score += 1
-        reasoning.append("公司有支付股息的记录 / Company has a track record of paying dividends")
+        reasoning.append("公司有支付股息的记录")
     else:
-        reasoning.append("无股息或最小股息支付 / No or minimal dividends paid")
+        reasoning.append("无股息或最小股息支付")
 
     return {
         "score": mgmt_score,
@@ -450,7 +450,7 @@ def calculate_owner_earnings(financial_line_items: list) -> dict[str, any]:
     Owner Earnings = Net Income + Depreciation - Maintenance CapEx
     """
     if not financial_line_items or len(financial_line_items) < 1:
-        return {"owner_earnings": None, "details": ["所有者收益计算数据不足 / Insufficient data for owner earnings calculation"]}
+        return {"owner_earnings": None, "details": ["所有者收益计算数据不足"]}
 
     latest = financial_line_items[0]
 
@@ -459,7 +459,7 @@ def calculate_owner_earnings(financial_line_items: list) -> dict[str, any]:
     capex = getattr(latest, 'capital_expenditure', None)
 
     if not all([net_income, depreciation, capex]):
-        return {"owner_earnings": None, "details": ["所有者收益计算缺少组件 / Missing components for owner earnings calculation"]}
+        return {"owner_earnings": None, "details": ["所有者收益计算缺少组件"]}
 
     # 估计维护资本支出（通常是总资本支出的70-80%）/ Estimate maintenance capex (typically 70-80% of total capex)
     maintenance_capex = capex * 0.75
@@ -468,14 +468,14 @@ def calculate_owner_earnings(financial_line_items: list) -> dict[str, any]:
     return {
         "owner_earnings": owner_earnings,
         "components": {"net_income": net_income, "depreciation": depreciation, "maintenance_capex": maintenance_capex},
-        "details": ["所有者收益计算成功 / Owner earnings calculated successfully"],
+        "details": ["所有者收益计算成功"],
     }
 
 
 def calculate_intrinsic_value(financial_line_items: list) -> dict[str, any]:
     """使用所有者收益的DCF计算内在价值 / Calculate intrinsic value using DCF with owner earnings."""
     if not financial_line_items:
-        return {"intrinsic_value": None, "details": ["估值数据不足 / Insufficient data for valuation"]}
+        return {"intrinsic_value": None, "details": ["估值数据不足"]}
 
     # 计算所有者收益 / Calculate owner earnings
     earnings_data = calculate_owner_earnings(financial_line_items)
@@ -489,7 +489,7 @@ def calculate_intrinsic_value(financial_line_items: list) -> dict[str, any]:
     shares_outstanding = getattr(latest_financial_line_items, 'outstanding_shares', None)
 
     if not shares_outstanding:
-        return {"intrinsic_value": None, "details": ["缺少流通股数据 / Missing shares outstanding data"]}
+        return {"intrinsic_value": None, "details": ["缺少流通股数据"]}
 
     # 巴菲特的DCF假设（保守方法）/ Buffett's DCF assumptions (conservative approach)
     growth_rate = 0.05  # 保守的5%增长 / Conservative 5% growth
@@ -518,7 +518,7 @@ def calculate_intrinsic_value(financial_line_items: list) -> dict[str, any]:
             "terminal_multiple": terminal_multiple,
             "projection_years": projection_years,
         },
-        "details": ["使用所有者收益的DCF模型计算内在价值 / Intrinsic value calculated using DCF model with owner earnings"],
+        "details": ["使用所有者收益的DCF模型计算内在价值"],
     }
 
 
@@ -582,7 +582,7 @@ def generate_buffett_output(
 
     # 解析失败时的默认后备信号 / Default fallback signal in case parsing fails
     def create_default_warren_buffett_signal():
-        return WarrenBuffettSignal(signal="中性", confidence=0.0, reasoning="分析错误，默认为中性 / Error in analysis, defaulting to neutral")
+        return WarrenBuffettSignal(signal="中性", confidence=0.0, reasoning="分析错误，默认为中性")
 
     return call_llm(
         prompt=prompt,

@@ -180,7 +180,7 @@ def analyze_business_quality(metrics: list, financial_line_items: list) -> dict:
     if not metrics or not financial_line_items:
         return {
             "score": 0,
-            "details": "业务质量分析数据不足 / Insufficient data to analyze business quality"
+            "details": "业务质量分析数据不足。"
         }
     
     # 1. 多期收入增长分析 - Multi-period revenue growth analysis
@@ -193,14 +193,14 @@ def analyze_business_quality(metrics: list, financial_line_items: list) -> dict:
             growth_rate = (final - initial) / abs(initial)
             if growth_rate > 0.5:  # 例如，在可用时间内增长50% - e.g., 50% growth over the available time
                 score += 2
-                details.append(f"收入在整个期间增长了{(growth_rate*100):.1f}% / Revenue grew by {(growth_rate*100):.1f}% over the full period.")
+                details.append(f"收入在整个期间增长了{(growth_rate*100):.1f}%。")
             else:
                 score += 1
-                details.append(f"收入增长为正但累计低于50%（{(growth_rate*100):.1f}%）/ Revenue growth is positive but under 50% cumulatively ({(growth_rate*100):.1f}%).")
+                details.append(f"收入增长为正但累计低于50%（{(growth_rate*100):.1f}%）。")
         else:
-            details.append("收入没有显著增长或数据不足 / Revenue did not grow significantly or data insufficient.")
+            details.append("收入没有显著增长或数据不足。")
     else:
-        details.append("多期趋势的收入数据不足 / Not enough revenue data for multi-period trend.")
+        details.append("多期趋势的收入数据不足。")
     
     # 2. 营业利润率和自由现金流一致性 - Operating margin and free cash flow consistency
     # 检查营业利润率或自由现金流是否持续为正/改善
@@ -213,22 +213,22 @@ def analyze_business_quality(metrics: list, financial_line_items: list) -> dict:
         above_15 = sum(1 for m in op_margin_vals if m > 0.15)
         if above_15 >= (len(op_margin_vals) // 2 + 1):
             score += 2
-            details.append("营业利润率经常超过15% / Operating margins have often exceeded 15%.")
+            details.append("营业利润率经常超过15%。")
         else:
-            details.append("营业利润率未持续保持在15%以上 / Operating margin not consistently above 15%.")
+            details.append("营业利润率未持续保持在15%以上。")
     else:
-        details.append("各期间无营业利润率数据 / No operating margin data across periods.")
+        details.append("各期间无营业利润率数据。")
     
     if fcf_vals:
         # 检查自由现金流在大部分时期是否为正 - Check if free cash flow is positive in most periods
         positive_fcf_count = sum(1 for f in fcf_vals if f > 0)
         if positive_fcf_count >= (len(fcf_vals) // 2 + 1):
             score += 1
-            details.append("大部分期间显示正自由现金流 / Majority of periods show positive free cash flow.")
+            details.append("大部分期间显示正自由现金流。")
         else:
-            details.append("自由现金流未持续为正 / Free cash flow not consistently positive.")
+            details.append("自由现金流未持续为正。")
     else:
-        details.append("各期间无自由现金流数据 / No free cash flow data across periods.")
+        details.append("各期间无自由现金流数据。")
     
     # 3. 最新指标的股本回报率(ROE)检查 - Return on Equity (ROE) check from the latest metrics
     # （如果需要多期ROE，也需要在financial_line_items中包含）
@@ -237,11 +237,11 @@ def analyze_business_quality(metrics: list, financial_line_items: list) -> dict:
     roe = getattr(latest_metrics, 'return_on_equity', None)
     if roe and roe > 0.15:
         score += 2
-        details.append(f"高ROE为{roe:.1%}，表明潜在护城河 / High ROE of {roe:.1%}, indicating potential moat.")
+        details.append(f"高ROE为{roe:.1%}，表明潜在护城河。")
     elif roe:
-        details.append(f"ROE为{roe:.1%}，不表明强护城河 / ROE of {roe:.1%} is not indicative of a strong moat.")
+        details.append(f"ROE为{roe:.1%}，不表明强护城河。")
     else:
-        details.append("指标中无ROE数据 / ROE data not available in metrics.")
+        details.append("指标中无ROE数据。")
     
     return {
         "score": score,
@@ -265,7 +265,7 @@ def analyze_financial_discipline(metrics: list, financial_line_items: list) -> d
     if not metrics or not financial_line_items:
         return {
             "score": 0,
-            "details": "财务纪律分析数据不足 / Insufficient data to analyze financial discipline"
+            "details": "财务纪律分析数据不足。"
         }
     
     # 1. Multi-period debt ratio or debt_to_equity
@@ -278,9 +278,9 @@ def analyze_financial_discipline(metrics: list, financial_line_items: list) -> d
         below_one_count = sum(1 for d in debt_to_equity_vals if d < 1.0)
         if below_one_count >= (len(debt_to_equity_vals) // 2 + 1):
             score += 2
-            details.append("大部分期间债务权益比<1.0 / Debt-to-equity < 1.0 for the majority of periods.")
+            details.append("大部分期间债务权益比<1.0。")
         else:
-            details.append("许多期间债务权益比≥1.0 / Debt-to-equity >= 1.0 in many periods.")
+            details.append("许多期间债务权益比≥1.0。")
     else:
         # Fallback to total_liabilities/total_assets if D/E not available
         liab_to_assets = []
@@ -294,11 +294,11 @@ def analyze_financial_discipline(metrics: list, financial_line_items: list) -> d
             below_50pct_count = sum(1 for ratio in liab_to_assets if ratio < 0.5)
             if below_50pct_count >= (len(liab_to_assets) // 2 + 1):
                 score += 2
-                details.append("大部分期间负债资产比<50% / Liabilities-to-assets < 50% for majority of periods.")
+                details.append("大部分期间负债资产比<50%。")
             else:
-                details.append("许多期间负债资产比≥50% / Liabilities-to-assets >= 50% in many periods.")
+                details.append("许多期间负债资产比≥50%。")
         else:
-            details.append("无一致的杠杆比率数据 / No consistent leverage ratio data available.")
+            details.append("无一致的杠杆比率数据。")
     
     # 2. Capital allocation approach (dividends + share counts)
     # If the company paid dividends or reduced share count over time, it may reflect discipline
@@ -308,11 +308,11 @@ def analyze_financial_discipline(metrics: list, financial_line_items: list) -> d
         paying_dividends_count = sum(1 for d in dividends_list if d < 0)
         if paying_dividends_count >= (len(dividends_list) // 2 + 1):
             score += 1
-            details.append("公司有向股东返还资本的历史（股息）/ Company has a history of returning capital to shareholders (dividends).")
+            details.append("公司有向股东返还资本的历史（股息）。")
         else:
-            details.append("股息未持续支付或无数据 / Dividends not consistently paid or no data.")
+            details.append("股息未持续支付或无数据。")
     else:
-        details.append("各期间无股息数据 / No dividend data found across periods.")
+        details.append("各期间无股息数据。")
     
     # Check for decreasing share count (simple approach):
     # We can compare first vs last if we have at least two data points
@@ -320,11 +320,11 @@ def analyze_financial_discipline(metrics: list, financial_line_items: list) -> d
     if len(shares) >= 2:
         if shares[-1] < shares[0]:
             score += 1
-            details.append("流通股数随时间减少（可能回购）/ Outstanding shares have decreased over time (possible buybacks).")
+            details.append("流通股数随时间减少（可能回购）。")
         else:
-            details.append("流通股数在可用期间内未减少 / Outstanding shares have not decreased over the available periods.")
+            details.append("流通股数在可用期间内未减少。")
     else:
-        details.append("无多期股数数据来评估回购 / No multi-period share count data to assess buybacks.")
+        details.append("无多期股数数据来评估回购。")
     
     return {
         "score": score,
@@ -347,7 +347,7 @@ def analyze_valuation(financial_line_items: list, market_cap: float) -> dict:
     if not financial_line_items or market_cap is None:
         return {
             "score": 0,
-            "details": "估值数据不足 / Insufficient data to perform valuation"
+            "details": "估值数据不足。"
         }
     
     # Example: use the most recent item for FCF
@@ -363,7 +363,7 @@ def analyze_valuation(financial_line_items: list, market_cap: float) -> dict:
     if fcf <= 0:
         return {
             "score": 0,
-            "details": f"无正FCF进行估值；FCF = {fcf} / No positive FCF for valuation; FCF = {fcf}",
+            "details": f"无正FCF进行估值；FCF = {fcf}。",
             "intrinsic_value": None
         }
     
@@ -462,7 +462,7 @@ def generate_ackman_output(
         return BillAckmanSignal(
             signal="中性",
             confidence=0.0,
-            reasoning="分析错误，默认为中性 / Error in analysis, defaulting to neutral"
+            reasoning="分析错误，默认为中性。"
         )
 
     return call_llm(
