@@ -15,6 +15,30 @@ Basically created an AI chatroom where boomer buffet and wsb regard work togethe
 
 This is a fork of [ai-hedge-fund](https://github.com/virattt/ai-hedge-fund) By [viratt](https://github.com/virattt) 
 
+## 项目结构
+
+项目已重新组织为前后端分离的架构：
+
+```
+ritadel/
+├── frontend/           # Next.js Web UI
+│   ├── src/           # 前端源代码
+│   ├── package.json   # 前端依赖
+│   └── README.md      # 前端说明文档
+├── backend/           # Python AI Engine
+│   ├── src/           # 后端源代码
+│   │   ├── agents/    # AI 代理模块
+│   │   ├── data/      # 数据处理
+│   │   ├── llm/       # 大语言模型接口
+│   │   ├── main.py    # 主程序入口
+│   │   └── webui.py   # Web API 服务
+│   ├── pyproject.toml # Python 项目配置
+│   ├── poetry.lock    # 依赖锁定文件
+│   └── README.md      # 后端说明文档
+├── start-servers.sh   # 快速启动脚本
+└── README.md          # 项目总体说明
+```
+
 ## Key Features
 
 ### Multi-Agent System
@@ -64,9 +88,11 @@ cd ritadel
 curl -sSL https://install.python-poetry.org | python3 -
 ```
 
-3. Install dependencies:
+3. Install Python dependencies:
 ```bash
+cd backend
 poetry install
+cd ..
 ```
 
 4. Set up environment variables:
@@ -75,13 +101,20 @@ cp .env.example .env
 # Edit .env with your API keys
 ```
 
-5. Start the web interface:
+5. Use the quick start script:
 ```bash
-# Terminal 1: Start API server
-poetry run python webui.py --api
+./start-servers.sh
+```
 
-# Terminal 2: Start web UI
-cd webui
+Or start services manually:
+
+```bash
+# Start backend API (Terminal 1)
+cd backend
+poetry run python src/webui.py --api
+
+# Start frontend (Terminal 2)
+cd frontend
 npm install
 npm run dev
 ```
@@ -96,6 +129,7 @@ Visit http://localhost:3000 to access the web interface.
 ### Command Line Interface
 ```bash
 # Basic analysis
+cd backend
 poetry run python src/main.py --ticker AAPL,MSFT,NVDA
 
 # Round table discussion
@@ -104,12 +138,36 @@ poetry run python src/main.py --ticker TSLA --round-table
 # Backtest with custom parameters
 poetry run python src/backtester.py --ticker BTC-USD,ETH-USD --crypto --initial-cash 100000
 ```
+
 ### Web Interface
 1. Navigate to http://localhost:3000
 2. Select analysis type (single analysis, backtest, or round table)
 3. Enter ticker symbols
 4. Choose AI analysts to include
 5. View real-time analysis and discussions
+
+## 开发指南
+
+### 后端开发
+```bash
+cd backend
+poetry install     # 安装依赖
+poetry shell       # 激活虚拟环境
+python src/webui.py    # 启动 API 服务
+python src/main.py     # 运行分析程序
+```
+
+详细信息请参考 [backend/README.md](backend/README.md)
+
+### 前端开发
+```bash
+cd frontend
+npm install        # 安装依赖
+npm run dev        # 启动开发服务器
+npm run build      # 构建生产版本
+```
+
+详细信息请参考 [frontend/README.md](frontend/README.md)
 
 ## Configuration
 

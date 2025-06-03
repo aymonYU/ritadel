@@ -89,7 +89,7 @@ const analystCategories = {
     description: '专注于高增长潜力和创新型公司',
     analysts: [
       { label: 'Cathie Wood (木头姐)', value: 'cathie_wood_agent', description: '专注于颠覆性创新和高速增长的技术公司', avatar: '🚀' },
-      { label: 'Phil Fisher (菲尔·费舍尔)', value: 'phil_fisher_agent', description: '识别具有强大竞争优势和增长潜力的公司', avatar: '📈' },
+      { label: 'Phil Fisher (费舍)', value: 'phil_fisher_agent', description: '识别具有强大竞争优势和增长潜力的公司', avatar: '📈' },
       { label: 'Bill Ackman (艾克曼)', value: 'bill_ackman_agent', description: '识别具有长期增长和激进潜力的优质企业', avatar: '💎' },
     ]
   },

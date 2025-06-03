@@ -45,5 +45,8 @@ Thumbs.db
 *.txt
 
 #node
-/webui/.next
-/webui/node_modules
+.next
+node_modules/
+.env.local
+
+
