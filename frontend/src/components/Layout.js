@@ -47,7 +47,7 @@ export default function Layout({ children }) {
   };
 
   const menuItems = [
-    { text: '股票分析', icon: <AssessmentIcon />, path: '/analysis', gradient: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)' },
+    { text: '股票分析', icon: <AssessmentIcon />, path: '/', gradient: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)' },
     { text: '回测', icon: <ChartIcon />, path: '/backtest', gradient: 'linear-gradient(135deg, #ec4899 0%, #f472b6 100%)' },
     { text: '圆桌', icon: <PeopleIcon />, path: '/round-table', gradient: 'linear-gradient(135deg, #22c55e 0%, #4ade80 100%)' },
     { text: '历史', icon: <HistoryIcon />, path: '/history', gradient: 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)' },
