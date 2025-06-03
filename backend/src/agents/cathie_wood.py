@@ -178,29 +178,45 @@ def analyze_disruptive_potential(metrics: list, financial_line_items: list) -> d
 
     # 1. 收入增长分析 - 检查增长加速情况 - Revenue Growth Analysis - Check for accelerating growth
     revenues = [item.revenue for item in financial_line_items if item.revenue]
-    if len(revenues) >= 3:  # 至少需要3个周期来检查加速 - Need at least 3 periods to check acceleration
-        growth_rates = []
-        for i in range(len(revenues)-1):
-            if revenues[i] and revenues[i+1]:
-                growth_rate = (revenues[i+1] - revenues[i]) / abs(revenues[i]) if revenues[i] != 0 else 0
-                growth_rates.append(growth_rate)
+    if len(revenues) >= 2:  # 降低从3个期间到2个期间的要求 / Lower requirement from 3 to 2 periods
+        if len(revenues) >= 3:
+            # 3个或更多期间：进行增长加速分析 / 3+ periods: perform growth acceleration analysis
+            growth_rates = []
+            for i in range(len(revenues)-1):
+                if revenues[i] and revenues[i+1]:
+                    growth_rate = (revenues[i+1] - revenues[i]) / abs(revenues[i]) if revenues[i] != 0 else 0
+                    growth_rates.append(growth_rate)
 
-        # 检查增长是否在加速 - Check if growth is accelerating
-        if len(growth_rates) >= 2 and growth_rates[-1] > growth_rates[0]:
-            score += 2
-            details.append(f"Revenue growth is accelerating: {(growth_rates[-1]*100):.1f}% vs {(growth_rates[0]*100):.1f}%")
+            # 检查增长是否在加速 - Check if growth is accelerating
+            if len(growth_rates) >= 2 and growth_rates[-1] > growth_rates[0]:
+                score += 2
+                details.append(f"Revenue growth is accelerating: {(growth_rates[-1]*100):.1f}% vs {(growth_rates[0]*100):.1f}%")
 
-        # 检查绝对增长率 - Check absolute growth rate
-        latest_growth = growth_rates[-1] if growth_rates else 0
-        if latest_growth > 1.0:  # 超过100%的增长 - Over 100% growth
-            score += 3
-            details.append(f"Exceptional revenue growth: {(latest_growth*100):.1f}%")
-        elif latest_growth > 0.5:  # 50%以上增长 - Over 50% growth
-            score += 2
-            details.append(f"Strong revenue growth: {(latest_growth*100):.1f}%")
-        elif latest_growth > 0.2:  # 20%以上增长 - Over 20% growth
-            score += 1
-            details.append(f"Moderate revenue growth: {(latest_growth*100):.1f}%")
+            # 检查绝对增长率 - Check absolute growth rate
+            latest_growth = growth_rates[-1] if growth_rates else 0
+            if latest_growth > 1.0:  # 超过100%的增长 - Over 100% growth
+                score += 3
+                details.append(f"Exceptional revenue growth: {(latest_growth*100):.1f}%")
+            elif latest_growth > 0.5:  # 50%以上增长 - Over 50% growth
+                score += 2
+                details.append(f"Strong revenue growth: {(latest_growth*100):.1f}%")
+            elif latest_growth > 0.2:  # 20%以上增长 - Over 20% growth
+                score += 1
+                details.append(f"Moderate revenue growth: {(latest_growth*100):.1f}%")
+        else:
+            # 只有2个期间：基础增长分析 / Only 2 periods: basic growth analysis
+            if revenues[0] and revenues[1] and revenues[1] != 0:
+                growth_rate = (revenues[0] - revenues[1]) / abs(revenues[1])
+                if growth_rate > 1.0:  # 超过100%的增长
+                    score += 2
+                    details.append(f"Exceptional revenue growth (limited data): {(growth_rate*100):.1f}%")
+                elif growth_rate > 0.5:  # 50%以上增长
+                    score += 1
+                    details.append(f"Strong revenue growth (limited data): {(growth_rate*100):.1f}%")
+                elif growth_rate > 0.2:  # 20%以上增长
+                    details.append(f"Moderate revenue growth (limited data): {(growth_rate*100):.1f}%")
+                else:
+                    details.append(f"Limited revenue growth (limited data): {(growth_rate*100):.1f}%")
     else:
         details.append("Insufficient revenue data for growth analysis")
 
@@ -472,18 +488,18 @@ def generate_cathie_wood_output(
             "system",
             """你是凯西·伍德的 AI 智能体，运用她的原则进行投资决策：
             
-            “1. 寻找能够利用颠覆性创新的公司。”
-            “2. 强调指数级增长潜力和巨大的潜在市场。”
-            “3. 专注于科技、医疗保健或其他面向未来的行业。”
-            “4. 考虑多年的投资期限以寻找潜在的突破。”
-            “5. 为追求高回报，接受更高的波动性。”
-            “6. 评估管理层的愿景和研发投资能力。”
-            “规则：”
-            “- 识别颠​​覆性或突破性技术。”
-            “- 评估多年收入增长的强劲潜力。”
-            “- 检查公司是否能够在大型市场中有效扩展。”
-            “- 使用增长导向的估值方法。”
-            “- 提供数据驱动的建议（买入/卖出/中性）。"""
+            "1. 寻找能够利用颠覆性创新的公司。"
+            "2. 强调指数级增长潜力和巨大的潜在市场。"
+            "3. 专注于科技、医疗保健或其他面向未来的行业。"
+            "4. 考虑多年的投资期限以寻找潜在的突破。"
+            "5. 为追求高回报，接受更高的波动性。"
+            "6. 评估管理层的愿景和研发投资能力。"
+            "规则："
+            "- 识别颠覆性或突破性技术。"
+            "- 评估多年收入增长的强劲潜力。"
+            "- 检查公司是否能够在大型市场中有效扩展。"
+            "- 使用增长导向的估值方法。"
+            "- 提供数据驱动的建议（买入/卖出/中性）。"""
         ),
         (
             "human",

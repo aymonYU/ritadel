@@ -100,9 +100,12 @@ def warren_buffett_agent(state: AgentState):
 
         # 计算总分 / Calculate total score
         total_score = fundamental_analysis["score"] + consistency_analysis["score"] + moat_analysis["score"] + mgmt_analysis["score"]
-        max_possible_score = 10 + moat_analysis["max_score"] + mgmt_analysis["max_score"]
-        # fundamental_analysis + consistency combined were up to 10 points total
-        # moat can add up to 3, mgmt can add up to 2, for example
+        # 更新最大可能分数计算 / Update max possible score calculation
+        # fundamental_analysis: 最高7分 (ROE 2 + debt 2 + margin 2 + liquidity 1)
+        # consistency_analysis: 最高3分 (growth 2 + consistency 1 + consecutive bonus可能超出，但限制为3分)  
+        # moat_analysis: 最高3分
+        # mgmt_analysis: 最高2分
+        max_possible_score = 7 + 3 + moat_analysis["max_score"] + mgmt_analysis["max_score"]
 
         # 如果我们有内在价值和当前价格，添加安全边际分析 / Add margin of safety analysis if we have both intrinsic value and current price
         margin_of_safety = None
@@ -219,33 +222,61 @@ def analyze_fundamentals(metrics: list) -> dict[str, any]:
 
 def analyze_consistency(financial_line_items: list) -> dict[str, any]:
     """分析盈利一致性和增长 / Analyze earnings consistency and growth."""
-    if len(financial_line_items) < 4:  # 需要至少4个期间进行趋势分析 / Need at least 4 periods for trend analysis
-        return {"score": 0, "details": "历史数据不足 / Insufficient historical data"}
+    if len(financial_line_items) < 2:  # 至少需要2个期间进行基本分析 / Need at least 2 periods for basic analysis
+        return {"score": 0, "details": "历史数据不足（需要至少2个期间）/ Insufficient historical data (need at least 2 periods)"}
 
     score = 0
     reasoning = []
 
     # 检查盈利增长趋势 / Check earnings growth trend
     earnings_values = [getattr(item, 'net_income', None) for item in financial_line_items if hasattr(item, 'net_income') and getattr(item, 'net_income', None)]
-    if len(earnings_values) >= 4:
-        # 简单检查：每个期间的盈利是否都比下一个大？/ Simple check: is each period's earnings bigger than the next?
-        earnings_growth = all(earnings_values[i] > earnings_values[i + 1] for i in range(len(earnings_values) - 1))
-
-        if earnings_growth:
-            score += 3
-            reasoning.append("过去几个期间盈利持续增长 / Consistent earnings growth over past periods")
-        else:
-            reasoning.append("盈利增长模式不一致 / Inconsistent earnings growth pattern")
-
+    
+    if len(earnings_values) >= 2:
         # 计算从最旧到最新的总增长率 / Calculate total growth rate from oldest to latest
         if len(earnings_values) >= 2 and earnings_values[-1] != 0:
             growth_rate = (earnings_values[0] - earnings_values[-1]) / abs(earnings_values[-1])
             reasoning.append(f"过去{len(earnings_values)}个期间的总盈利增长：{growth_rate:.1%} / Total earnings growth of {growth_rate:.1%} over past {len(earnings_values)} periods")
+            
+            # 基于增长率给分，更保守的评分 / Score based on growth rate, more conservative scoring
+            if growth_rate > 1.0:  # 100%以上增长才给最高分 / >100% growth for max score
+                score += 2
+                reasoning.append("盈利强劲增长 / Strong earnings growth")
+            elif growth_rate > 0.3:  # 30%以上增长 / >30% growth
+                score += 1
+                reasoning.append("盈利良好增长 / Good earnings growth")
+            elif growth_rate > 0:  # 正增长 / Positive growth
+                score += 0.5
+                reasoning.append("盈利正增长 / Positive earnings growth")
+            else:
+                reasoning.append("盈利下降或无增长 / Earnings decline or no growth")
+        
+        # 如果有足够数据进行趋势分析 / If enough data for trend analysis
+        if len(earnings_values) >= 3:
+            # 检查一致性：大部分期间是否为正 / Check consistency: are most periods positive
+            positive_periods = sum(1 for e in earnings_values if e > 0)
+            if positive_periods >= len(earnings_values) * 0.8:  # 80%的期间为正 / 80% of periods positive
+                score += 1
+                reasoning.append("盈利一致性良好（大部分期间为正）/ Good earnings consistency (most periods positive)")
+            elif positive_periods >= len(earnings_values) * 0.6:  # 60%的期间为正 / 60% of periods positive
+                score += 0.5
+                reasoning.append("盈利一致性一般 / Moderate earnings consistency")
+            else:
+                reasoning.append("盈利一致性较差 / Poor earnings consistency")
+        
+        # 如果有4个或更多期间，检查连续增长 / If 4+ periods, check for consecutive growth
+        if len(earnings_values) >= 4:
+            consecutive_growth = all(earnings_values[i] > earnings_values[i + 1] for i in range(len(earnings_values) - 1))
+            if consecutive_growth:
+                score += 1  # 连续增长奖励分 / Consecutive growth bonus
+                reasoning.append("过去所有期间盈利连续增长 / Consecutive earnings growth across all periods")
     else:
         reasoning.append("趋势分析的盈利数据不足 / Insufficient earnings data for trend analysis")
 
+    # 确保最高分不超过3分，保持在合理范围内 / Ensure max score doesn't exceed 3 points
+    final_score = min(3, score)
+
     return {
-        "score": score,
+        "score": final_score,
         "details": "; ".join(reasoning),
     }
 
@@ -260,7 +291,7 @@ def analyze_moat(metrics: list) -> dict[str, any]:
     For simplicity, we look at stability of ROE/operating margins over multiple periods
     or high margin over the last few years. Higher stability => higher moat score.
     """
-    if not metrics or len(metrics) < 3:
+    if not metrics:
         return {"score": 0, "max_score": 3, "details": "护城河分析数据不足 / Insufficient data for moat analysis"}
 
     reasoning = []
@@ -276,23 +307,81 @@ def analyze_moat(metrics: list) -> dict[str, any]:
         if operating_margin is not None:
             historical_margins.append(operating_margin)
 
-    # 检查稳定或改善的ROE / Check for stable or improving ROE
-    if len(historical_roes) >= 3:
-        stable_roe = all(r > 0.15 for r in historical_roes)
-        if stable_roe:
+    # 如果只有1-2个期间的数据，基于当前表现给分 / If only 1-2 periods, score based on current performance
+    if len(metrics) < 3:
+        latest_metrics = metrics[0]
+        
+        # 检查最新的ROE / Check latest ROE
+        latest_roe = getattr(latest_metrics, 'return_on_equity', None)
+        if latest_roe and latest_roe > 0.20:  # 20% ROE threshold for limited data
             moat_score += 1
-            reasoning.append("各期间ROE稳定在15%以上（表明有护城河）/ Stable ROE above 15% across periods (suggests moat)")
+            reasoning.append(f"当前ROE优秀：{latest_roe:.1%}（数据有限但表现强劲）/ Current ROE excellent: {latest_roe:.1%} (limited data but strong performance)")
+        elif latest_roe and latest_roe > 0.15:
+            reasoning.append(f"当前ROE良好：{latest_roe:.1%} / Current ROE good: {latest_roe:.1%}")
+        
+        # 检查最新的营业利润率 / Check latest operating margin
+        latest_margin = getattr(latest_metrics, 'operating_margin', None)
+        if latest_margin and latest_margin > 0.20:  # 20% margin threshold for limited data
+            moat_score += 1
+            reasoning.append(f"当前营业利润率优秀：{latest_margin:.1%}（数据有限但表现强劲）/ Current operating margin excellent: {latest_margin:.1%} (limited data but strong performance)")
+        elif latest_margin and latest_margin > 0.15:
+            reasoning.append(f"当前营业利润率良好：{latest_margin:.1%} / Current operating margin good: {latest_margin:.1%}")
+        
+        if moat_score == 0:
+            reasoning.append("基于有限数据，未发现明显护城河迹象 / Based on limited data, no clear moat indicators found")
+        
+        return {
+            "score": moat_score,
+            "max_score": 3,
+            "details": "; ".join(reasoning),
+        }
+
+    # 如果有3个或更多期间，使用原有的稳定性分析 / If 3+ periods, use original stability analysis
+    # 检查稳定或改善的ROE / Check for stable or improving ROE
+    if len(historical_roes) >= 2:
+        if len(historical_roes) >= 3:
+            # 3个或更多期间：检查是否都高于15% / 3+ periods: check if all above 15%
+            stable_roe = all(r > 0.15 for r in historical_roes)
+            if stable_roe:
+                moat_score += 1
+                reasoning.append("各期间ROE稳定在15%以上（表明有护城河）/ Stable ROE above 15% across periods (suggests moat)")
+            else:
+                reasoning.append("ROE未持续保持在15%以上 / ROE not consistently above 15%")
         else:
-            reasoning.append("ROE未持续保持在15%以上 / ROE not consistently above 15%")
+            # 只有2个期间：检查是否都高于15%且有改善 / Only 2 periods: check if both above 15% and improving
+            if all(r > 0.15 for r in historical_roes):
+                if historical_roes[0] >= historical_roes[1]:  # 最新 >= 较旧
+                    moat_score += 1
+                    reasoning.append("ROE保持在15%以上且稳定/改善 / ROE maintained above 15% and stable/improving")
+                else:
+                    reasoning.append("ROE高但有下降趋势 / ROE high but declining trend")
+            else:
+                reasoning.append("ROE未持续保持在15%以上 / ROE not consistently above 15%")
+    else:
+        reasoning.append("ROE数据不足 / Insufficient ROE data")
 
     # 检查稳定或改善的营业利润率 / Check for stable or improving operating margin
-    if len(historical_margins) >= 3:
-        stable_margin = all(m > 0.15 for m in historical_margins)
-        if stable_margin:
-            moat_score += 1
-            reasoning.append("营业利润率稳定在15%以上（护城河指标）/ Stable operating margins above 15% (moat indicator)")
+    if len(historical_margins) >= 2:
+        if len(historical_margins) >= 3:
+            # 3个或更多期间：检查是否都高于15% / 3+ periods: check if all above 15%
+            stable_margin = all(m > 0.15 for m in historical_margins)
+            if stable_margin:
+                moat_score += 1
+                reasoning.append("营业利润率稳定在15%以上（护城河指标）/ Stable operating margins above 15% (moat indicator)")
+            else:
+                reasoning.append("营业利润率未持续保持在15%以上 / Operating margin not consistently above 15%")
         else:
-            reasoning.append("营业利润率未持续保持在15%以上 / Operating margin not consistently above 15%")
+            # 只有2个期间：检查是否都高于15%且有改善 / Only 2 periods: check if both above 15% and improving
+            if all(m > 0.15 for m in historical_margins):
+                if historical_margins[0] >= historical_margins[1]:  # 最新 >= 较旧
+                    moat_score += 1
+                    reasoning.append("营业利润率保持在15%以上且稳定/改善 / Operating margin maintained above 15% and stable/improving")
+                else:
+                    reasoning.append("营业利润率高但有下降趋势 / Operating margin high but declining trend")
+            else:
+                reasoning.append("营业利润率未持续保持在15%以上 / Operating margin not consistently above 15%")
+    else:
+        reasoning.append("营业利润率数据不足 / Insufficient operating margin data")
 
     # 如果两者都稳定/改善，加一分 / If both are stable/improving, add an extra point
     if moat_score == 2:

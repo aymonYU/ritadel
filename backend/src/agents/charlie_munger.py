@@ -471,37 +471,60 @@ def analyze_predictability(financial_line_items: list) -> dict:
     score = 0
     details = []
     
-    if not financial_line_items or len(financial_line_items) < 5:
+    if not financial_line_items or len(financial_line_items) < 2:
         return {
             "score": 0,
-            "details": "Insufficient data to analyze business predictability (need 5+ years)"
+            "details": "Insufficient data to analyze business predictability (need at least 2 periods)"
         }
+    
+    # 根据可用数据量调整分析深度 / Adjust analysis depth based on available data
+    data_periods = len(financial_line_items)
     
     # 1. Revenue stability and growth
     revenues = [item.revenue for item in financial_line_items 
                if hasattr(item, 'revenue') and item.revenue is not None]
     
-    if revenues and len(revenues) >= 5:
-        # Calculate year-over-year growth rates
-        growth_rates = [(revenues[i] / revenues[i+1] - 1) for i in range(len(revenues)-1)]
-        
-        avg_growth = sum(growth_rates) / len(growth_rates)
-        growth_volatility = sum(abs(r - avg_growth) for r in growth_rates) / len(growth_rates)
-        
-        if avg_growth > 0.05 and growth_volatility < 0.1:
-            # Steady, consistent growth (Munger loves this)
-            score += 3
-            details.append(f"Highly predictable revenue: {avg_growth:.1%} avg growth with low volatility")
-        elif avg_growth > 0 and growth_volatility < 0.2:
-            # Positive but somewhat volatile growth
-            score += 2
-            details.append(f"Moderately predictable revenue: {avg_growth:.1%} avg growth with some volatility")
-        elif avg_growth > 0:
-            # Growing but unpredictable
-            score += 1
-            details.append(f"Growing but less predictable revenue: {avg_growth:.1%} avg growth with high volatility")
+    if revenues and len(revenues) >= 2:
+        if len(revenues) >= 3:
+            # 3个或更多期间：计算增长率波动性 / 3+ periods: calculate growth rate volatility
+            growth_rates = [(revenues[i] / revenues[i+1] - 1) for i in range(len(revenues)-1)]
+            
+            avg_growth = sum(growth_rates) / len(growth_rates)
+            growth_volatility = sum(abs(r - avg_growth) for r in growth_rates) / len(growth_rates)
+            
+            if len(revenues) >= 5:
+                # 5个或更多期间：使用原有严格标准 / 5+ periods: use original strict criteria
+                if avg_growth > 0.05 and growth_volatility < 0.1:
+                    score += 3
+                    details.append(f"Highly predictable revenue: {avg_growth:.1%} avg growth with low volatility")
+                elif avg_growth > 0 and growth_volatility < 0.2:
+                    score += 2
+                    details.append(f"Moderately predictable revenue: {avg_growth:.1%} avg growth with some volatility")
+                elif avg_growth > 0:
+                    score += 1
+                    details.append(f"Growing but less predictable revenue: {avg_growth:.1%} avg growth with high volatility")
+                else:
+                    details.append(f"Declining or highly unpredictable revenue: {avg_growth:.1%} avg growth")
+            else:
+                # 3-4个期间：使用宽松标准 / 3-4 periods: use relaxed criteria
+                if avg_growth > 0.05 and growth_volatility < 0.15:
+                    score += 2
+                    details.append(f"Good revenue predictability (limited data): {avg_growth:.1%} avg growth")
+                elif avg_growth > 0:
+                    score += 1
+                    details.append(f"Moderate revenue growth (limited data): {avg_growth:.1%} avg growth")
+                else:
+                    details.append(f"Uncertain revenue trend (limited data): {avg_growth:.1%} avg growth")
         else:
-            details.append(f"Declining or highly unpredictable revenue: {avg_growth:.1%} avg growth")
+            # 只有2个期间：基础增长分析 / Only 2 periods: basic growth analysis
+            growth_rate = (revenues[0] / revenues[1] - 1) if revenues[1] != 0 else 0
+            if growth_rate > 0.1:
+                score += 1
+                details.append(f"Positive revenue growth (limited data): {growth_rate:.1%}")
+            elif growth_rate > 0:
+                details.append(f"Slight revenue growth (limited data): {growth_rate:.1%}")
+            else:
+                details.append(f"No revenue growth (limited data): {growth_rate:.1%}")
     else:
         details.append("Insufficient revenue history for predictability analysis")
     
@@ -509,71 +532,109 @@ def analyze_predictability(financial_line_items: list) -> dict:
     op_income = [item.operating_income for item in financial_line_items 
                 if hasattr(item, 'operating_income') and item.operating_income is not None]
     
-    if op_income and len(op_income) >= 5:
-        # Count positive operating income periods
+    if op_income and len(op_income) >= 2:
         positive_periods = sum(1 for income in op_income if income > 0)
         
-        if positive_periods == len(op_income):
-            # Consistently profitable operations
-            score += 3
-            details.append("Highly predictable operations: Operating income positive in all periods")
-        elif positive_periods >= len(op_income) * 0.8:
-            # Mostly profitable operations
-            score += 2
-            details.append(f"Predictable operations: Operating income positive in {positive_periods}/{len(op_income)} periods")
-        elif positive_periods >= len(op_income) * 0.6:
-            # Somewhat profitable operations
-            score += 1
-            details.append(f"Somewhat predictable operations: Operating income positive in {positive_periods}/{len(op_income)} periods")
+        if len(op_income) >= 5:
+            # 5个或更多期间：使用原有标准 / 5+ periods: use original criteria
+            if positive_periods == len(op_income):
+                score += 3
+                details.append("Highly predictable operations: Operating income positive in all periods")
+            elif positive_periods >= len(op_income) * 0.8:
+                score += 2
+                details.append(f"Predictable operations: Operating income positive in {positive_periods}/{len(op_income)} periods")
+            elif positive_periods >= len(op_income) * 0.6:
+                score += 1
+                details.append(f"Somewhat predictable operations: Operating income positive in {positive_periods}/{len(op_income)} periods")
+            else:
+                details.append(f"Unpredictable operations: Operating income positive in only {positive_periods}/{len(op_income)} periods")
         else:
-            details.append(f"Unpredictable operations: Operating income positive in only {positive_periods}/{len(op_income)} periods")
+            # 2-4个期间：宽松标准 / 2-4 periods: relaxed criteria
+            if positive_periods == len(op_income):
+                score += 2
+                details.append(f"Good operational consistency (limited data): Operating income positive in all {len(op_income)} periods")
+            elif positive_periods >= len(op_income) * 0.67:
+                score += 1
+                details.append(f"Moderate operational consistency (limited data): Operating income positive in {positive_periods}/{len(op_income)} periods")
+            else:
+                details.append(f"Inconsistent operations (limited data): Operating income positive in only {positive_periods}/{len(op_income)} periods")
     else:
         details.append("Insufficient operating income history")
     
-    # 3. Margin consistency - Munger values stable margins
+    # 3. Margin consistency - 调整标准基于数据量 / Adjust criteria based on data availability
     op_margins = [item.operating_margin for item in financial_line_items 
                  if hasattr(item, 'operating_margin') and item.operating_margin is not None]
     
-    if op_margins and len(op_margins) >= 5:
-        # Calculate margin volatility
-        avg_margin = sum(op_margins) / len(op_margins)
-        margin_volatility = sum(abs(m - avg_margin) for m in op_margins) / len(op_margins)
-        
-        if margin_volatility < 0.03:  # Very stable margins
-            score += 2
-            details.append(f"Highly predictable margins: {avg_margin:.1%} avg with minimal volatility")
-        elif margin_volatility < 0.07:  # Moderately stable margins
-            score += 1
-            details.append(f"Moderately predictable margins: {avg_margin:.1%} avg with some volatility")
+    if op_margins and len(op_margins) >= 2:
+        if len(op_margins) >= 5:
+            # 5个或更多期间：计算波动性 / 5+ periods: calculate volatility
+            avg_margin = sum(op_margins) / len(op_margins)
+            margin_volatility = sum(abs(m - avg_margin) for m in op_margins) / len(op_margins)
+            
+            if margin_volatility < 0.03:
+                score += 2
+                details.append(f"Highly predictable margins: {avg_margin:.1%} avg with minimal volatility")
+            elif margin_volatility < 0.07:
+                score += 1
+                details.append(f"Moderately predictable margins: {avg_margin:.1%} avg with some volatility")
+            else:
+                details.append(f"Unpredictable margins: {avg_margin:.1%} avg with high volatility ({margin_volatility:.1%})")
         else:
-            details.append(f"Unpredictable margins: {avg_margin:.1%} avg with high volatility ({margin_volatility:.1%})")
+            # 2-4个期间：基础一致性检查 / 2-4 periods: basic consistency check
+            avg_margin = sum(op_margins) / len(op_margins)
+            if all(m > 0.05 for m in op_margins):  # 所有期间利润率都超过5%
+                if avg_margin > 0.15:
+                    score += 2
+                    details.append(f"Good margin consistency (limited data): {avg_margin:.1%} avg")
+                else:
+                    score += 1
+                    details.append(f"Moderate margin levels (limited data): {avg_margin:.1%} avg")
+            else:
+                details.append(f"Inconsistent margins (limited data): {avg_margin:.1%} avg")
     else:
         details.append("Insufficient margin history")
     
-    # 4. Cash generation reliability
+    # 4. Cash generation reliability - 调整标准 / Adjust criteria
     fcf_values = [item.free_cash_flow for item in financial_line_items 
                  if hasattr(item, 'free_cash_flow') and item.free_cash_flow is not None]
     
-    if fcf_values and len(fcf_values) >= 5:
-        # Count positive FCF periods
+    if fcf_values and len(fcf_values) >= 2:
         positive_fcf_periods = sum(1 for fcf in fcf_values if fcf > 0)
         
-        if positive_fcf_periods == len(fcf_values):
-            # Consistently positive FCF
-            score += 2
-            details.append("Highly predictable cash generation: Positive FCF in all periods")
-        elif positive_fcf_periods >= len(fcf_values) * 0.8:
-            # Mostly positive FCF
-            score += 1
-            details.append(f"Predictable cash generation: Positive FCF in {positive_fcf_periods}/{len(fcf_values)} periods")
+        if len(fcf_values) >= 5:
+            # 5个或更多期间：使用原有标准 / 5+ periods: use original criteria
+            if positive_fcf_periods == len(fcf_values):
+                score += 2
+                details.append("Highly predictable cash generation: Positive FCF in all periods")
+            elif positive_fcf_periods >= len(fcf_values) * 0.8:
+                score += 1
+                details.append(f"Predictable cash generation: Positive FCF in {positive_fcf_periods}/{len(fcf_values)} periods")
+            else:
+                details.append(f"Unpredictable cash generation: Positive FCF in only {positive_fcf_periods}/{len(fcf_values)} periods")
         else:
-            details.append(f"Unpredictable cash generation: Positive FCF in only {positive_fcf_periods}/{len(fcf_values)} periods")
+            # 2-4个期间：宽松标准 / 2-4 periods: relaxed criteria
+            if positive_fcf_periods == len(fcf_values):
+                score += 1
+                details.append(f"Good cash generation (limited data): Positive FCF in all {len(fcf_values)} periods")
+            elif positive_fcf_periods >= len(fcf_values) * 0.67:
+                details.append(f"Moderate cash generation (limited data): Positive FCF in {positive_fcf_periods}/{len(fcf_values)} periods")
+            else:
+                details.append(f"Inconsistent cash generation (limited data): Positive FCF in only {positive_fcf_periods}/{len(fcf_values)} periods")
     else:
         details.append("Insufficient free cash flow history")
     
-    # Scale score to 0-10 range
-    # Maximum possible raw score would be 10 (3+3+2+2)
-    final_score = min(10, score * 10 / 10)
+    # 根据数据量调整最终分数 / Adjust final score based on data availability
+    if data_periods >= 5:
+        # 5个或更多期间：最高10分 / 5+ periods: max 10 points
+        final_score = min(10, score * 10 / 10)
+    elif data_periods >= 3:
+        # 3-4个期间：最高8分 / 3-4 periods: max 8 points  
+        final_score = min(8, score * 8 / 8)
+        details.append(f"(Score adjusted for limited data: {data_periods} periods)")
+    else:
+        # 2个期间：最高5分 / 2 periods: max 5 points
+        final_score = min(5, score * 5 / 3)
+        details.append(f"(Score limited due to minimal data: {data_periods} periods)")
     
     return {
         "score": final_score,
@@ -601,15 +662,22 @@ def calculate_munger_valuation(financial_line_items: list, market_cap: float) ->
     fcf_values = [item.free_cash_flow for item in financial_line_items 
                  if hasattr(item, 'free_cash_flow') and item.free_cash_flow is not None]
     
-    if not fcf_values or len(fcf_values) < 3:
+    if not fcf_values or len(fcf_values) < 2:
         return {
             "score": 0,
-            "details": "Insufficient free cash flow data for valuation"
+            "details": "Insufficient free cash flow data for valuation (need at least 2 periods)"
         }
     
-    # 1. Normalize earnings by taking average of last 3-5 years
+    # 1. Normalize earnings by taking average - 根据数据量调整 / Adjust based on available data
     # (Munger prefers to normalize earnings to avoid over/under-valuation based on cyclical factors)
-    normalized_fcf = sum(fcf_values[:min(5, len(fcf_values))]) / min(5, len(fcf_values))
+    if len(fcf_values) >= 3:
+        # 3个或更多期间：使用更多数据点 / 3+ periods: use more data points
+        normalized_fcf = sum(fcf_values[:min(5, len(fcf_values))]) / min(5, len(fcf_values))
+        details.append(f"FCF normalized using {min(5, len(fcf_values))} periods")
+    else:
+        # 只有2个期间：简单平均，但添加风险提醒 / Only 2 periods: simple average with risk warning
+        normalized_fcf = sum(fcf_values) / len(fcf_values)
+        details.append(f"FCF normalized using only {len(fcf_values)} periods (limited data)")
     
     if normalized_fcf <= 0:
         return {
@@ -726,7 +794,7 @@ def generate_munger_output(
             7. 为优秀的企业支付合理的价格。
             8. 切勿出价过高，始终要求安全边际。
             9. 避免复杂业务和你不了解的业务。
-            10. “逆向思维，永远逆向思维”——专注于避免愚蠢，而不是追求卓越。
+            10. "逆向思维，永远逆向思维"——专注于避免愚蠢，而不是追求卓越。
 
             规则：
             - 赞扬运营和现金流可预测、稳定的企业。
