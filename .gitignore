@@ -52,3 +52,4 @@ node_modules/
 out/
 .cursor/*
 !requirements.txt
+deploy-frontend.sh

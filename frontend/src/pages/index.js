@@ -1332,7 +1332,7 @@ function AnalysisProgress({ progress, tickers, analysts, error, onCancel }) {
                               sx={{
                                 mb: 1,
                                 height: 6,
-                                borderRadius: 1,
+                                borderRadius: 4,
                                 '.MuiLinearProgress-bar': {
                                   backgroundColor: statusColor
                                 }
@@ -1861,6 +1861,149 @@ function AnalysisResults({ results, onNewAnalysis }) {
           </CardContent>
         </Card>
       )}
+
+      {/* 打赏区域 */}
+      <Box sx={{ mt: 4 }}>
+        <Card sx={{
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          borderRadius: 3,
+          overflow: 'hidden',
+          position: 'relative'
+        }}>
+          {/* 背景装饰 */}
+          <Box sx={{
+            position: 'absolute',
+            top: -20,
+            right: -20,
+            width: 100,
+            height: 100,
+            borderRadius: '50%',
+            background: 'rgba(255,255,255,0.1)',
+            animation: 'float 6s ease-in-out infinite'
+          }} />
+
+          <Box sx={{
+            position: 'absolute',
+            bottom: -30,
+            left: -30,
+            width: 80,
+            height: 80,
+            borderRadius: '50%',
+            background: 'rgba(255,255,255,0.05)',
+            animation: 'float 4s ease-in-out infinite reverse'
+          }} />
+
+          <CardContent sx={{ 
+            p: 4, 
+            textAlign: 'center',
+            position: 'relative',
+            zIndex: 1
+          }}>
+            <Typography variant="h5" sx={{ 
+              color: 'white', 
+              fontWeight: 'bold', 
+              mb: 2,
+              textShadow: '0 2px 4px rgba(0,0,0,0.3)'
+            }}>
+              🎉 分析完成！
+            </Typography>
+            
+            <Typography variant="h6" sx={{ 
+              color: 'rgba(255,255,255,0.9)', 
+              mb: 3,
+              fontWeight: '500'
+            }}>
+              如果分析结果还满意的话...
+            </Typography>
+
+            <Typography variant="h4" sx={{ 
+              color: 'white', 
+              fontWeight: 'bold', 
+              mb: 4,
+              textShadow: '0 2px 8px rgba(0,0,0,0.4)',
+              background: 'linear-gradient(45deg, #FFD700, #FFA500)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text'
+            }}>
+              "Token烧钱如流水，打赏续命靠大家 💸"
+            </Typography>
+
+            {/* 二维码容器 */}
+            <Box sx={{
+              display: 'flex',
+              justifyContent: 'center',
+              mb: 3
+            }}>
+              <Box sx={{
+                background: 'white',
+                borderRadius: 3,
+                p: 2,
+                boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+                transform: 'rotate(-2deg)',
+                transition: 'transform 0.3s ease',
+                '&:hover': {
+                  transform: 'rotate(0deg) scale(1.05)'
+                }
+              }}>
+                <img 
+                  src="/award.jpg" 
+                  alt="打赏二维码" 
+                  style={{
+                    width: '250px',
+                    height: '250px',
+                    borderRadius: '8px',
+                    display: 'block'
+                  }}
+                />
+              </Box>
+            </Box>
+
+            <Typography variant="body1" sx={{ 
+              color: 'rgba(255,255,255,0.8)', 
+              mb: 2,
+              fontWeight: '500'
+            }}>
+              扫码打赏，让AI继续为您提供优质分析 ☕
+            </Typography>
+
+            <Box sx={{
+              display: 'flex',
+              justifyContent: 'center',
+              gap: 2,
+              flexWrap: 'wrap'
+            }}>
+              <Chip
+                label="💡 支持创新"
+                sx={{
+                  background: 'rgba(255,255,255,0.2)',
+                  color: 'white',
+                  fontWeight: 'bold',
+                  backdropFilter: 'blur(10px)'
+                }}
+              />
+              <Chip
+                label="🚀 持续改进"
+                sx={{
+                  background: 'rgba(255,255,255,0.2)',
+                  color: 'white',
+                  fontWeight: 'bold',
+                  backdropFilter: 'blur(10px)'
+                }}
+              />
+              <Chip
+                label="❤️ 感谢支持"
+                sx={{
+                  background: 'rgba(255,255,255,0.2)',
+                  color: 'white',
+                  fontWeight: 'bold',
+                  backdropFilter: 'blur(10px)'
+                }}
+              />
+            </Box>
+          </CardContent>
+        </Card>
+      </Box>
     </Box>
   );
 }
