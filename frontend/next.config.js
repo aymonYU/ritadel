@@ -8,23 +8,13 @@ const nextConfig = {
   images: {
     unoptimized: true
   },
+  // 静态导出模式下使用相对路径
   assetPrefix: process.env.NODE_ENV === 'production' ? './' : '',
   experimental: {
     // Enable SWC for faster compilation
     forceSwcTransforms: true,
   },
-  // API路由在静态导出时需要重写到云函数
-  async rewrites() {
-    if (process.env.NODE_ENV === 'production') {
-      return [
-        {
-          source: '/api/:path*',
-          destination: 'https://tool-1govrq10c87924fe-1258111923.ap-shanghai.app.tcloudbase.com/ritadel-api/:path*'
-        }
-      ]
-    }
-    return []
-  },
+  // 静态导出模式下不支持 rewrites，已移除
   // Ensure hot reloading works properly
   webpack: (config, { dev, isServer }) => {
     if (dev && !isServer) {

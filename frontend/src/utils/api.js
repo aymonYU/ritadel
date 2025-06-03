@@ -2,9 +2,12 @@ import axios from 'axios';
 
 // 根据环境动态配置 API URL
 const getApiUrl = () => {
-
-  console.log('process.env.NEXT_PUBLIC_API_URL', process.env.NEXT_PUBLIC_API_URL);
-  return process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
+  if (process.env.NODE_ENV === 'development') {
+    // 开发环境使用环境变量或本地后端
+    return process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000'
+  }
+  // 生产环境直接使用云函数URL
+  return 'https://ai-backend-165763-6-1258111923.sh.run.tcloudbase.com';
 };
 
 const API_URL = getApiUrl();
@@ -12,6 +15,8 @@ const API_URL = getApiUrl();
 // 在开发环境中打印 API URL 以便调试
 if (process.env.NODE_ENV === 'development') {
   console.log('API URL:', API_URL);
+} else {
+  console.error('Production API URL:', API_URL);
 }
 
 // Create axios instance
