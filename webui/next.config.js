@@ -2,6 +2,11 @@
 const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
+  output: 'dist',
+  trailingSlash: true,
+  images: {
+    unoptimized: true
+  },
   experimental: {
     // Enable SWC for faster compilation
     forceSwcTransforms: true,
