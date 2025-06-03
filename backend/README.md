@@ -2,11 +2,38 @@
 
 这是 Ritadel 项目的后端部分，包含核心的 AI 分析引擎和 API 服务。
 
+## 快速开始
+
+```bash
+# 1. 安装依赖
+pip install -r requirements.txt
+
+# 2. 配置环境变量
+cp .env.example .env
+# 编辑 .env 文件，添加你的 API 密钥
+
+# 3. 启动服务
+python src/webui.py
+```
+
+服务器将在 http://127.0.0.1:5000 启动
+
+## 环境变量
+
+在 `.env` 文件中添加：
+
+```
+OPENAI_API_KEY=your_openai_api_key
+ANTHROPIC_API_KEY=your_anthropic_api_key    # 可选
+GROQ_API_KEY=your_groq_api_key              # 可选
+GEMINI_API_KEY=your_gemini_api_key          # 可选
+```
+
 ## 技术栈
 
-- **语言**: Python 3.11+
-- **框架**: FastAPI/Flask
-- **依赖管理**: Poetry
+- **语言**: Python 3.9+
+- **框架**: Flask
+- **依赖管理**: pip
 - **AI/ML**: LangChain, OpenAI API
 - **数据处理**: Pandas, NumPy
 
@@ -14,20 +41,20 @@
 
 ```
 backend/
-├── src/                # 源代码目录
-│   ├── agents/         # AI 代理模块
-│   ├── data/          # 数据处理模块
-│   ├── graph/         # 图形分析模块
-│   ├── llm/           # 大语言模型接口
-│   ├── round_table/   # 圆桌讨论功能
-│   ├── tools/         # 工具模块
-│   ├── utils/         # 工具函数
-│   ├── main.py        # 主程序入口
-│   ├── webui.py       # Web API 服务
-│   └── backtester.py  # 回测引擎
-├── pyproject.toml     # Python 项目配置
-├── poetry.lock        # 依赖锁定文件
-└── README.md          # 项目说明
+├── src/                    # 源代码目录
+│   ├── agents/             # AI 代理模块
+│   ├── data/              # 数据处理模块
+│   ├── graph/             # 图形分析模块
+│   ├── llm/               # 大语言模型接口
+│   ├── round_table/       # 圆桌讨论功能
+│   ├── tools/             # 工具模块
+│   ├── utils/             # 工具函数
+│   ├── main.py            # 主程序入口
+│   ├── webui.py           # Web API 服务
+│   └── backtester.py      # 回测引擎
+├── requirements.txt        # 生产依赖
+├── requirements-dev.txt    # 开发依赖
+└── README.md              # 项目说明
 ```
 
 ## 核心功能
@@ -35,87 +62,50 @@ backend/
 - **多代理分析**: 基于 LangChain 的多 AI 代理系统
 - **投资决策**: LLM 驱动的智能投资策略
 - **回测引擎**: 历史数据回测和分析
-- **圆桌讨论**: AI 角色间的互动讨论
 - **数据分析**: 金融数据处理和可视化
 
-## 开发环境设置
+## API 端点
 
-### 使用 Poetry 安装依赖
+- `GET /api/analysts` - 获取分析师列表
+- `POST /api/analysis` - 运行股票分析
+- `POST /api/backtest` - 运行历史回测
 
-```bash
-# 确保在 backend 目录中
-cd backend
-poetry install
-```
-
-### 激活虚拟环境
+## 开发环境
 
 ```bash
-poetry shell
+# 安装开发依赖
+pip install -r requirements-dev.txt
+
+# 代码格式化
+black src/
+
+# 类型检查
+mypy src/
+
+# 运行测试
+pytest
 ```
 
-### 运行后端服务
+## Docker 部署
 
 ```bash
-python src/webui.py
+# 构建镜像
+docker build -t ritadel-backend .
+
+# 运行容器
+docker run -p 5000:5000 \
+  -e OPENAI_API_KEY=your_api_key \
+  ritadel-backend
 ```
 
-### 运行主程序
+## 系统要求
 
-```bash
-python src/main.py
-```
-
-### 运行回测
-
-```bash
-python src/backtester.py
-```
-
-## 环境变量配置
-
-在项目根目录创建 `.env` 文件并配置以下变量：
-
-```bash
-# OpenAI API 配置
-OPENAI_API_KEY=your_openai_api_key
-
-# 其他 API 配置
-# 添加其他必要的环境变量
-```
-
-## API 接口
-
-后端提供以下主要 API 接口：
-
-- `/api/analysis` - 执行投资分析
-- `/api/backtest` - 运行回测
-- `/api/roundtable` - 圆桌讨论功能
-- `/api/portfolio` - 投资组合管理
-
-## 开发指南
-
-1. 遵循 Python PEP 8 编码规范
-2. 使用 type hints 进行类型注解
-3. 编写单元测试覆盖核心功能
-4. 使用 logging 模块记录日志
-5. 所有 Python 代码都位于 `src/` 目录中
-
-## 从根目录运行
-
-如果需要从项目根目录运行命令：
-
-```bash
-# 分析命令
-cd backend && poetry run python src/main.py --ticker AAPL
-
-# 启动服务
-cd backend && poetry run python src/webui.py --api
-```
+- Python 3.9+
+- pip
+- 至少一个 LLM API 密钥
 
 ## 注意事项
 
-- 确保所有 API 密钥已正确配置
-- 开发时建议使用测试数据
-- 生产环境需要配置适当的安全措施
-- Python 源代码现在位于 `backend/src/` 目录中 
+1. 确保已设置所需的API密钥
+2. 默认使用 OpenAI GPT-4o 模型
+3. 建议在虚拟环境中运行 
