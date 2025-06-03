@@ -3,6 +3,7 @@ import axios from 'axios';
 // 根据环境动态配置 API URL
 const getApiUrl = () => {
 
+  console.log('process.env.NEXT_PUBLIC_API_URL', process.env.NEXT_PUBLIC_API_URL);
   return process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
 };
 
