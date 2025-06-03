@@ -63,6 +63,7 @@ export default function Layout({ children }) {
         borderRight: '1px solid rgba(255, 255, 255, 0.1)',
       }}
     > {/* Logo和品牌区域 */}
+    <div style={{paddingTop: '80px'}}/>
     <Box sx={{ 
       py: 3, 
       px: 2,
@@ -71,13 +72,14 @@ export default function Layout({ children }) {
       alignItems: 'center', 
       justifyContent: 'center',
       background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%)',
-      borderRadius: '0 0 20px 20px',
+      borderRadius: '20px',
       margin: '0 16px 20px 16px',
       border: '1px solid rgba(99, 102, 241, 0.2)',
       position: 'relative',
       overflow: 'hidden'
     }}>
       {/* 背景装饰 */}
+
       <Box sx={{
         position: 'absolute',
         top: -50,
