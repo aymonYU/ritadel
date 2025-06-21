@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Box, Grid, Typography, Card, CardContent, TextField, Button, Autocomplete, Checkbox, Chip, FormControlLabel, FormGroup, Divider, Stepper, Step, StepLabel, StepContent, Paper, LinearProgress, Alert, Fade, Slide, IconButton, Tooltip, Avatar, CardActionArea, useTheme } from '@mui/material';
 import { Search as SearchIcon, Send as SendIcon, Check as CheckIcon, TrendingUp, TrendingDown, AccountBalance, Rocket, Analytics, Person, Add, Remove } from '@mui/icons-material';
-import { runAnalysis } from '../utils/api';
+import { runAnalysis, getHello } from '../utils/api';
 
 // 添加自定义CSS动画
 const customStyles = `
@@ -220,6 +220,12 @@ export default function Home() {
   };
 
   const colors = getThemeColors();
+
+  useEffect(() => {
+    getHello().then(data => {
+      console.log('Hello:', data);
+    });
+  }, []);
 
   useEffect(() => {
     let valid = false;

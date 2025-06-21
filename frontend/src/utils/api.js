@@ -7,7 +7,7 @@ const getApiUrl = () => {
     return process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000'
   }
   // 生产环境直接使用云函数URL
-  return 'https://ai-backend-165763-6-1258111923.sh.run.tcloudbase.com';
+  return 'https://stock-backend-165763-6-1258111923.sh.run.tcloudbase.com';
 };
 
 const API_URL = getApiUrl();
@@ -26,6 +26,19 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+
+// API functions
+export const getHello = async () => {
+  try {
+    const response = await api.get('/api/hello');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching hello:', error);
+    throw error;
+  }
+};
+
 
 // API functions
 export const getModels = async () => {

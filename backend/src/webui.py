@@ -41,6 +41,17 @@ def start_api_server(host=DEFAULT_HOST, port=API_PORT):
     #     hardcoded_llm_order = [("[openai] gpt-4o", "gpt-4o", "OpenAI")]
     #     return jsonify({"models": hardcoded_llm_order})
 
+    @app.route('/api/hello', methods=['GET'])
+    def hello():
+        return jsonify({"message": "Hello, World!"})
+    
+    @app.route('/api/getAppleFinancialMetrics', methods=['GET'])
+    def get_apple_financial_metrics():
+        from tools.api import get_financial_metrics
+        metrics = get_financial_metrics("AAPL", "2024-03-31")
+        # Convert Pydantic models to dictionaries for JSON serialization
+        return jsonify([m.model_dump() for m in metrics])
+
     @app.route('/api/analysts', methods=['GET'])
     def get_analysts():
         """获取可用的分析师代理列表"""

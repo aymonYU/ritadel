@@ -63,3 +63,5 @@ npm start
 - 确保后端服务已启动并运行在正确端口
 - 检查环境变量配置是否正确
 - 开发时建议开启热重载功能
+
+上传命令： tcb hosting deploy ./frontend/out -e

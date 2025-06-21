@@ -7,6 +7,19 @@ from datetime import datetime, timedelta
 import json
 from typing import List, Dict, Any, Optional
 from functools import lru_cache
+import time
+import random
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+import threading
+
+# Optional curl_cffi import for better compatibility with anti-bot measures
+try:
+    from curl_cffi import requests as cf_requests
+    CURL_CFFI_AVAILABLE = True
+except ImportError:
+    CURL_CFFI_AVAILABLE = False
+    cf_requests = None  # 明确设置为 None
 
 from data.cache import get_cache
 from data.models import (
@@ -22,8 +35,44 @@ from data.models import (
     InsiderTradeResponse,
 )
 
+# Import rate limiter and proxy manager
+from .rate_limiter import wait_if_needed
+from .proxy_manager import get_proxy_configuration, mark_proxy_failed
+from .yfinance_data_fetcher import get_yfinance_data
+
 # Global cache instance
 _cache = get_cache()
+
+
+def safe_yfinance_request(ticker_symbol, operation_func, max_retries=3):
+    """Safely make yfinance requests with rate limiting and retry logic.
+    
+    注意：这个函数现在主要用于向后兼容。
+    新代码应该使用 get_yfinance_data() 或 get_comprehensive_data()。
+    """
+    try:
+        # 获取统一的数据集
+        dataset = get_yfinance_data(ticker_symbol)
+        
+        # 创建一个模拟的 ticker 对象来兼容现有代码
+        class MockTicker:
+            def __init__(self, dataset):
+                self.info = dataset.info
+                self.financials = dataset.financials
+                self.balance_sheet = dataset.balance_sheet
+                self.cashflow = dataset.cashflow
+                self.quarterly_financials = dataset.quarterly_financials
+                self.quarterly_balance_sheet = dataset.quarterly_balance_sheet
+                self.quarterly_cashflow = dataset.quarterly_cashflow
+                self.income_stmt = dataset.income_stmt
+                self.quarterly_income_stmt = dataset.quarterly_income_stmt
+        
+        mock_ticker = MockTicker(dataset)
+        return operation_func(mock_ticker)
+        
+    except Exception as e:
+        print(f"Error in safe_yfinance_request for {ticker_symbol}: {str(e)}")
+        raise e
 
 # Define API keys and fallback order
 def get_api_keys():
@@ -57,31 +106,6 @@ def get_prices(ticker: str, start_date: str, end_date: str) -> list[Price]:
     # if is_crypto:
     #     return get_crypto_prices(ticker, start_date, end_date)
     
-    # Try primary source: Yahoo Finance
-    try:
-        # Get the data from Yahoo Finance
-        yf_ticker = yf.Ticker(ticker)
-        df = yf_ticker.history(start=start_date, end=end_date)
-        
-        if not df.empty:
-            prices = []
-            for index, row in df.iterrows():
-                date_str = index.strftime('%Y-%m-%d')
-                price = Price(
-                    open=float(row['Open']),
-                    close=float(row['Close']),
-                    high=float(row['High']),
-                    low=float(row['Low']),
-                    volume=int(row['Volume']),
-                    time=date_str
-                )
-                prices.append(price)
-            
-            # Cache the results
-            _cache.set_prices(cache_key, [p.model_dump() for p in prices])
-            return prices
-    except Exception as e:
-        print(f"Yahoo Finance error for {ticker}: {str(e)}")
     
     # Fallback to StockData.org if Yahoo fails
     try:
@@ -155,28 +179,30 @@ def get_financial_metrics(
     limit: int = 10
 ) -> list[FinancialMetrics]:
     """Fetch financial metrics from cache or APIs."""
+    print(f"Fetching financial metrics for {ticker} on {end_date}")
 
     if cached_data := _cache.get_financial_metrics(ticker):
         # Filter cached data by date and limit
+        # 按报告期间过滤缓存数据并限制数量
+        # report_period: 财务报告的期间日期，用于标识财务数据的报告时间
         filtered_data = [FinancialMetrics(**metric) for metric in cached_data if metric["report_period"] <= end_date]
         filtered_data.sort(key=lambda x: x.report_period, reverse=True)
         if filtered_data:
             return filtered_data[:limit]
 
-    # If not in cache or insufficient data, fetch from Yahoo Finance
+    # If not in cache or insufficient data, fetch from Yahoo Finance using unified data fetcher
     try:
-        yf_ticker = yf.Ticker(ticker)
+        # 使用统一的数据获取器
+        yf_dataset = get_yfinance_data(ticker)
         
-        # Get various metrics
-        info = yf_ticker.info
-        financial_data = yf_ticker.financials
-        balance_sheet = yf_ticker.balance_sheet
-        cash_flow = yf_ticker.cashflow
-        
-        # Get quarterly data too for more data points if needed
-        quarterly_financials = yf_ticker.quarterly_financials
-        quarterly_balance_sheet = yf_ticker.quarterly_balance_sheet
-        quarterly_cashflow = yf_ticker.quarterly_cashflow
+        # Extract data from the dataset
+        info = yf_dataset.info
+        financial_data = yf_dataset.financials
+        balance_sheet = yf_dataset.balance_sheet
+        cash_flow = yf_dataset.cashflow
+        quarterly_financials = yf_dataset.quarterly_financials
+        quarterly_balance_sheet = yf_dataset.quarterly_balance_sheet
+        quarterly_cashflow = yf_dataset.quarterly_cashflow
         
         # Combine data sources based on available dates
         all_dates = set()
@@ -340,26 +366,18 @@ def search_line_items(
     limit: int = 10
 ) -> list[LineItem]:
     """Search financial line items for a ticker."""
-    # 移除了 is_crypto 条件判断和 search_crypto_line_items 的调用
-    # Removed is_crypto conditional check and call to search_crypto_line_items
-    # if is_crypto:
-    #     return search_crypto_line_items(ticker, line_items, end_date, period, limit)
-    
     try:
-        yf_ticker = yf.Ticker(ticker)
+        # 使用统一的数据获取器，复用可能已经获取的数据
+        yf_dataset = get_yfinance_data(ticker)
         
-        # Get financial statements
-        income_stmt = yf_ticker.income_stmt
-        balance_sheet = yf_ticker.balance_sheet
-        cash_flow = yf_ticker.cashflow
-        
-        # Also get quarterly data
-        q_income_stmt = yf_ticker.quarterly_income_stmt
-        q_balance_sheet = yf_ticker.quarterly_balance_sheet
-        q_cash_flow = yf_ticker.quarterly_cashflow
-        
-        # Use info for some common items
-        info = yf_ticker.info
+        # Extract statements from the dataset
+        income_stmt = yf_dataset.income_stmt
+        balance_sheet = yf_dataset.balance_sheet
+        cash_flow = yf_dataset.cashflow
+        q_income_stmt = yf_dataset.quarterly_income_stmt
+        q_balance_sheet = yf_dataset.quarterly_balance_sheet
+        q_cash_flow = yf_dataset.quarterly_cashflow
+        info = yf_dataset.info
         
         # Get all available dates from the statements
         all_dates = set()
@@ -624,8 +642,10 @@ def get_company_news(
         start_dt = datetime.strptime(start_date, '%Y-%m-%d') if start_date else end_dt - timedelta(days=90)
         
         # Get news from Yahoo Finance
-        yf_ticker = yf.Ticker(ticker)
-        news_data = yf_ticker.news
+        def get_yf_news(yf_ticker):
+            return yf_ticker.news
+        
+        news_data = safe_yfinance_request(ticker, get_yf_news)
         
         # Process the news
         news_items = []
@@ -676,113 +696,19 @@ def get_company_news(
         print(f"Error fetching company news for {ticker}: {str(e)}")
         return []
 
-# 移除了 get_crypto_news 函数，因为它专门用于获取加密货币的新闻，现在不再支持
-# Removed get_crypto_news function as it was specific to fetching news for cryptocurrencies, which is no longer supported.
-# def get_crypto_news(
-#     ticker: str,
-#     end_date: str,
-#     start_date: str | None = None,
-#     limit: int = 100
-# ) -> list[CompanyNews]:
-#     """Fetch news articles for a cryptocurrency."""
-#     # Normalize ticker symbol
-#     coin_id = ticker.lower().replace("-usd", "").replace("/usd", "")
-#    
-#     # Default start date to 30 days ago if not specified
-#     if not start_date:
-#         end_date_dt = datetime.strptime(end_date, "%Y-%m-%d")
-#         start_date = (end_date_dt - timedelta(days=30)).strftime("%Y-%m-%d")
-#    
-#     try:
-#         # CryptoCompare News API (free tier)
-#         url = "https://min-api.cryptocompare.com/data/v2/news/"
-#         params = {
-#             "categories": coin_id,
-#             "lang": "EN"
-#         }
-#        
-#         # Add API key if available
-#         api_keys = get_api_keys()
-#         if api_key := api_keys.get("cryptocompare"):
-#             params["api_key"] = api_key
-#        
-#         response = requests.get(url, params=params)
-#        
-#         if response.status_code == 200:
-#             data = response.json()
-#             if "Data" in data:
-#                 news_list = []
-#                
-#                 for article in data["Data"]:
-#                     # Convert published timestamp to date string
-#                     published_date = datetime.fromtimestamp(article["published_on"]).strftime("%Y-%m-%d")
-#                    
-#                     # Check if within date range
-#                     if start_date <= published_date <= end_date:
-#                         # Determine sentiment (basic approach)
-#                         title_lower = article["title"].lower()
-#                         if any(word in title_lower for word in ["surge", "soar", "jump", "rally", "bullish", "high"]):
-#                             sentiment = "positive"
-#                         elif any(word in title_lower for word in ["drop", "fall", "crash", "bearish", "low", "down"]):
-#                             sentiment = "negative"
-#                         else:
-#                             sentiment = "neutral"
-#                        
-#                         news = CompanyNews(
-#                             ticker=ticker,
-#                             title=article["title"],
-#                             author=article.get("author", "Unknown"),
-#                             source=article.get("source", "CryptoCompare"),
-#                             date=published_date,
-#                             url=article["url"],
-#                             sentiment=sentiment
-#                         )
-#                        
-#                         news_list.append(news)
-#                        
-#                         if len(news_list) >= limit:
-#                             break
-#                
-#                 return news_list
-#     except Exception as e:
-#         print(f"CryptoCompare news error for {ticker}: {str(e)}")
-#    
-#     # Fallback to empty list if no news found
-#     return []
 
 def get_market_cap(
     ticker: str,
     end_date: str,
 ) -> float | None:
     """Fetch market cap from Yahoo Finance."""
-    try:
-        yf_ticker = yf.Ticker(ticker)
-        info = yf_ticker.info
-        
-        # Get market cap directly
-        market_cap = info.get('marketCap')
-        
-        if market_cap:
-            return float(market_cap)
-            
-        # If not available, try to calculate from price * shares outstanding
-        prev_close = info.get('previousClose')
-        shares_outstanding = info.get('sharesOutstanding')
-        
-        if prev_close and shares_outstanding:
-            return float(prev_close * shares_outstanding)
-            
-        return None
-        
-    except Exception as e:
-        print(f"Error fetching market cap for {ticker}: {str(e)}")
-        
+   
         # Try to get from financial metrics as fallback
-        financial_metrics = get_financial_metrics(ticker, end_date)
-        if financial_metrics and financial_metrics[0].market_cap:
-            return financial_metrics[0].market_cap
+    financial_metrics = get_financial_metrics(ticker, end_date)
+    if financial_metrics and financial_metrics[0].market_cap:
+        return financial_metrics[0].market_cap
             
-        return None
+    return None
 
 def prices_to_df(prices: list[Price]) -> pd.DataFrame:
     """Convert prices to a DataFrame."""
@@ -813,3 +739,135 @@ def get_value_from_df(df, field_name, date):
         return float(value) if not pd.isna(value) else None
     except (KeyError, ValueError, TypeError):
         return None
+
+def get_comprehensive_data(
+    ticker: str,
+    end_date: str,
+    period: str = "ttm",
+    limit: int = 10,
+    include_line_items: list[str] = None
+) -> dict:
+    """一次性获取股票的全部数据，避免重复请求
+    
+    这个函数专门为 agents 设计，一次性获取所有需要的数据：
+    - Financial metrics
+    - Line items
+    - Market cap
+    - 原始 yfinance 数据
+    
+    Args:
+        ticker: 股票代码
+        end_date: 结束日期
+        period: 期间类型
+        limit: 数据条数限制
+        include_line_items: 需要的特定 line items
+        
+    Returns:
+        包含所有数据的字典
+    """
+    print(f"🔄 Getting comprehensive data for {ticker}")
+    
+    try:
+        # 使用统一的数据获取器，只请求一次 yfinance
+        yf_dataset = get_yfinance_data(ticker)
+        
+        # 获取 financial metrics
+        financial_metrics = get_financial_metrics(ticker, end_date, period, limit)
+        
+        # 获取 line items (如果指定了)
+        line_items = []
+        if include_line_items:
+            line_items = search_line_items(ticker, include_line_items, end_date, period, limit)
+        
+        # 获取 market cap
+        market_cap = None
+        if financial_metrics and financial_metrics[0].market_cap:
+            market_cap = financial_metrics[0].market_cap
+        
+        # 返回综合数据
+        result = {
+            "ticker": ticker,
+            "financial_metrics": financial_metrics,
+            "line_items": line_items,
+            "market_cap": market_cap,
+            "yfinance_dataset": yf_dataset,  # 原始数据，供高级分析使用
+            "data_timestamp": yf_dataset.fetch_timestamp,
+            "data_age_seconds": time.time() - yf_dataset.fetch_timestamp
+        }
+        
+        print(f"✅ Successfully retrieved comprehensive data for {ticker}")
+        return result
+        
+    except Exception as e:
+        print(f"❌ Error getting comprehensive data for {ticker}: {str(e)}")
+        return {
+            "ticker": ticker,
+            "financial_metrics": [],
+            "line_items": [],
+            "market_cap": None,
+            "yfinance_dataset": None,
+            "error": str(e)
+        }
+
+
+def get_batch_comprehensive_data(
+    tickers: list[str],
+    end_date: str,
+    period: str = "ttm",
+    limit: int = 10,
+    common_line_items: list[str] = None
+) -> dict[str, dict]:
+    """批量获取多个股票的综合数据
+    
+    这个函数为多股票分析优化，可以显著减少 API 调用次数。
+    
+    Args:
+        tickers: 股票代码列表
+        end_date: 结束日期
+        period: 期间类型
+        limit: 数据条数限制
+        common_line_items: 所有股票共同需要的 line items
+        
+    Returns:
+        ticker 到综合数据的映射
+    """
+    print(f"🚀 Getting batch comprehensive data for {len(tickers)} tickers")
+    
+    # 首先批量获取所有 yfinance 数据
+    yf_datasets = get_batch_yfinance_data(tickers)
+    
+    results = {}
+    
+    for ticker in tickers:
+        try:
+            if ticker in yf_datasets:
+                # 数据已经获取，直接处理
+                print(f"📊 Processing data for {ticker}")
+                result = get_comprehensive_data(ticker, end_date, period, limit, common_line_items)
+                results[ticker] = result
+            else:
+                # 数据获取失败
+                print(f"❌ No data available for {ticker}")
+                results[ticker] = {
+                    "ticker": ticker,
+                    "financial_metrics": [],
+                    "line_items": [],
+                    "market_cap": None,
+                    "yfinance_dataset": None,
+                    "error": "Failed to fetch yfinance data"
+                }
+        except Exception as e:
+            print(f"❌ Error processing {ticker}: {str(e)}")
+            results[ticker] = {
+                "ticker": ticker,
+                "financial_metrics": [],
+                "line_items": [],
+                "market_cap": None,
+                "yfinance_dataset": None,
+                "error": str(e)
+            }
+    
+    print(f"✅ Batch processing completed for {len(results)} tickers")
+    return results
+
+
