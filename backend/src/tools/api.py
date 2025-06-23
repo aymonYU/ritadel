@@ -36,8 +36,6 @@ from data.models import (
 )
 
 # Import rate limiter and proxy manager
-from .rate_limiter import wait_if_needed
-from .proxy_manager import get_proxy_configuration, mark_proxy_failed
 from .yfinance_data_fetcher import get_yfinance_data
 
 # Global cache instance
@@ -106,6 +104,34 @@ def get_prices(ticker: str, start_date: str, end_date: str) -> list[Price]:
     # if is_crypto:
     #     return get_crypto_prices(ticker, start_date, end_date)
     
+    # Try primary source: Yahoo Finance with unified data fetcher
+    # try:
+    #     yf_dataset = get_yfinance_data(ticker)
+        
+    #     if yf_dataset and not yf_dataset.history.empty:
+    #         # Filter history by date range
+    #         df = yf_dataset.history
+    #         df_filtered = df[(df.index >= start_date) & (df.index <= end_date)]
+            
+    #         if not df_filtered.empty:
+    #             prices = []
+    #             for index, row in df_filtered.iterrows():
+    #                 date_str = index.strftime('%Y-%m-%d')
+    #                 price = Price(
+    #                     open=float(row['Open']),
+    #                     close=float(row['Close']),
+    #                     high=float(row['High']),
+    #                     low=float(row['Low']),
+    #                     volume=int(row['Volume']),
+    #                     time=date_str
+    #                 )
+    #                 prices.append(price)
+                
+    #             # Cache the results
+    #             _cache.set_prices(cache_key, [p.model_dump() for p in prices])
+    #             return prices
+    # except Exception as e:
+    #     print(f"Yahoo Finance error for {ticker}: {str(e)}")
     
     # Fallback to StockData.org if Yahoo fails
     try:

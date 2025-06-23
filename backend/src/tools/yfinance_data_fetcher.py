@@ -1,24 +1,32 @@
+#!/usr/bin/env python3
 """
-YFinance Data Fetcher Module
+统一的 YFinance 数据获取器
 
-这个模块提供统一的 yfinance 数据获取功能，避免重复请求相同的数据。
-
-主要功能：
-- 统一的数据获取接口
-- 智能缓存和复用
-- 支持批量数据获取
-- 避免重复的 API 调用
+这个模块提供了统一的数据获取接口，包含：
+- 智能速率限制
+- 会话管理和代理支持
+- 数据缓存和复用
+- 批量获取优化
+- 强化反检测机制
 """
 
+import os
 import time
-from typing import Dict, Any, Optional, Tuple
-from dataclasses import dataclass
-from .rate_limiter import wait_if_needed
-from .proxy_manager import get_proxy_configuration, mark_proxy_failed
-import yfinance as yf
 import random
+import threading
+import hashlib
+import uuid
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional, Any
+from dataclasses import dataclass
+import pandas as pd
 
-# Optional curl_cffi import for better compatibility with anti-bot measures
+import yfinance as yf
+import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+
+# 尝试导入 curl_cffi
 try:
     from curl_cffi import requests as cf_requests
     CURL_CFFI_AVAILABLE = True
@@ -26,318 +34,311 @@ except ImportError:
     CURL_CFFI_AVAILABLE = False
     cf_requests = None
 
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
-import requests
+def generate_dynamic_user_agent():
+    """生成动态User-Agent，基于真实浏览器模式"""
+    # 时间戳和随机ID
+    timestamp = str(int(time.time()))
+    random_id = str(uuid.uuid4())[:8]
+    hash_suffix = hashlib.md5(f"{timestamp}-{random_id}".encode()).hexdigest()[:6]
+    
+    # 最新Chrome版本
+    chrome_versions = [
+        "119.0.0.0", "120.0.0.0", "121.0.0.0", "122.0.0.0", "123.0.0.0"
+    ]
+    chrome_version = random.choice(chrome_versions)
+    
+    # 操作系统选择
+    os_options = [
+        "Windows NT 10.0; Win64; x64",
+        "Macintosh; Intel Mac OS X 10_15_7",
+        "X11; Linux x86_64"
+    ]
+    os_string = random.choice(os_options)
+    
+    # 生成更真实的User-Agent
+    user_agents = [
+        f"Mozilla/5.0 ({os_string}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{chrome_version} Safari/537.36",
+        f"Mozilla/5.0 ({os_string}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{chrome_version} Safari/537.36 Edg/119.0.0.0",
+        f"Mozilla/5.0 ({os_string}) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15"
+    ]
+    
+    return random.choice(user_agents)
 
+def get_enhanced_headers():
+    """获取增强的浏览器headers，完全模拟真实浏览器"""
+    return {
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Accept-Language': 'en-US,en;q=0.9,zh-CN;q=0.8,zh;q=0.7',
+        'Cache-Control': 'max-age=0',
+        'sec-ch-ua': '"Google Chrome";v="119", "Chromium";v="119", "Not?A_Brand";v="24"',
+        'sec-ch-ua-mobile': '?0',
+        'sec-ch-ua-platform': '"Linux"',
+        'sec-fetch-dest': 'document',
+        'sec-fetch-mode': 'navigate',
+        'sec-fetch-site': 'none',
+        'sec-fetch-user': '?1',
+        'upgrade-insecure-requests': '1',
+        'Connection': 'keep-alive',
+        'DNT': '1',
+        'Pragma': 'no-cache',
+    }
 
 @dataclass
-class YFinanceDataSet:
-    """YFinance 完整数据集"""
+class YFinanceDataset:
+    """YFinance 数据集合"""
     ticker: str
     info: Dict[str, Any]
-    financials: Any  # DataFrame
-    balance_sheet: Any  # DataFrame
-    cashflow: Any  # DataFrame
-    quarterly_financials: Any  # DataFrame
-    quarterly_balance_sheet: Any  # DataFrame
-    quarterly_cashflow: Any  # DataFrame
-    income_stmt: Any  # DataFrame
-    quarterly_income_stmt: Any  # DataFrame
+    history: pd.DataFrame
+    financials: pd.DataFrame
+    balance_sheet: pd.DataFrame
+    cashflow: pd.DataFrame
+    quarterly_financials: pd.DataFrame
+    quarterly_balance_sheet: pd.DataFrame
+    quarterly_cashflow: pd.DataFrame
+    income_stmt: pd.DataFrame
+    quarterly_income_stmt: pd.DataFrame
+    news: List[Dict[str, Any]]
     fetch_timestamp: float
-    
-    def is_fresh(self, max_age_seconds: int = 3600) -> bool:
-        """检查数据是否仍然新鲜（默认1小时内）"""
-        return (time.time() - self.fetch_timestamp) < max_age_seconds
 
 
-class YFinanceDataFetcher:
-    """统一的 YFinance 数据获取器"""
+# Global data cache (简单的内存缓存)
+_data_cache: Dict[str, YFinanceDataset] = {}
+_cache_lock = threading.Lock()
+
+
+def get_proxy_list():
+    """获取代理列表，支持多种格式"""
+    proxies = []
     
-    def __init__(self):
-        self._data_cache: Dict[str, YFinanceDataSet] = {}
-        self._user_agents = [
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-            'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:89.0) Gecko/20100101 Firefox/89.0',
-            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:89.0) Gecko/20100101 Firefox/89.0',
-        ]
+    # 从环境变量获取代理
+    proxy_http = os.environ.get("YFINANCE_PROXY_HTTP", "")
+    proxy_https = os.environ.get("YFINANCE_PROXY_HTTPS", "")
     
-    def _create_session(self, use_proxy=False):
-        """创建 HTTP 会话
+    # 解析逗号分隔的代理列表
+    if proxy_http:
+        for proxy in proxy_http.split(','):
+            proxy = proxy.strip()
+            if proxy:
+                proxies.append({'http': proxy, 'https': proxy})
+    
+    if proxy_https and proxy_https != proxy_http:
+        for proxy in proxy_https.split(','):
+            proxy = proxy.strip()
+            if proxy:
+                proxies.append({'http': proxy, 'https': proxy})
+    
+    return proxies
+
+def create_yfinance_session():
+    """Create a session with enhanced anti-detection features."""
+    
+    # 在云服务器环境下强制使用代理
+    use_proxy = True
+    
+    if CURL_CFFI_AVAILABLE:
+        # 使用curl_cffi，更好的反检测能力
+        session = cf_requests.Session()
         
-        Args:
-            use_proxy: 是否使用代理，默认为 False（优先直连）
-        """
-        # 选择会话类型
-        if CURL_CFFI_AVAILABLE:
-            session = cf_requests.Session()
-        else:
-            session = requests.Session()
-            # 只有标准 requests 需要重试策略配置
-            retry_strategy = Retry(
-                total=3,
-                backoff_factor=1,
-                status_forcelist=[429, 500, 502, 503, 504],
-            )
-            adapter = HTTPAdapter(max_retries=retry_strategy)
-            session.mount("http://", adapter)
-            session.mount("https://", adapter)
+        # 设置动态headers
+        enhanced_headers = get_enhanced_headers()
+        enhanced_headers['User-Agent'] = generate_dynamic_user_agent()
+        session.headers.update(enhanced_headers)
         
-        # 通用配置：用户代理
-        session.headers.update({
-            'User-Agent': random.choice(self._user_agents)
-        })
-        
-        # 代理配置：只有在明确要求使用代理时才配置
+        # 代理配置
         if use_proxy:
-            proxy_config = get_proxy_configuration()
-            if proxy_config:
-                if CURL_CFFI_AVAILABLE:
-                    session.proxies = proxy_config
-                else:
-                    session.proxies.update(proxy_config)
-                print(f"🔗 Using proxy configuration: {proxy_config}")
+            proxy_list = get_proxy_list()
+            if proxy_list:
+                selected_proxy = random.choice(proxy_list)
+                session.proxies = selected_proxy
+                print(f"🔗 Using proxy: {selected_proxy}")
             else:
-                print("⚠️ Proxy requested but no proxy configuration available")
-        else:
-            print("🌐 Using direct connection (no proxy)")
+                print("⚠️ No proxy available, using direct connection (may fail)")
         
         return session
+    else:
+        # Fallback to regular requests session
+        session = requests.Session()
+        
+        # Retry strategy
+        retry_strategy = Retry(
+            total=3,
+            backoff_factor=1,
+            status_forcelist=[429, 500, 502, 503, 504],
+        )
+        adapter = HTTPAdapter(max_retries=retry_strategy)
+        session.mount("http://", adapter)
+        session.mount("https://", adapter)
+        
+        # 设置动态headers
+        enhanced_headers = get_enhanced_headers()
+        enhanced_headers['User-Agent'] = generate_dynamic_user_agent()
+        session.headers.update(enhanced_headers)
+        
+        # 代理配置
+        if use_proxy:
+            proxy_list = get_proxy_list()
+            if proxy_list:
+                selected_proxy = random.choice(proxy_list)
+                session.proxies.update(selected_proxy)
+                print(f"🔗 Using proxy: {selected_proxy}")
+            else:
+                print("⚠️ No proxy available, using direct connection (may fail)")
+        
+        return session
+
+def safe_fetch_yfinance_data(ticker_symbol: str, max_retries: int = 5) -> Optional[YFinanceDataset]:
+    """安全地获取 YFinance 数据，增强重试机制"""
     
-    def _safe_request(self, ticker: str, max_retries: int = 3) -> YFinanceDataSet:
-        """安全地获取 YFinance 数据，包含重试逻辑
-        
-        策略：
-        1. 第一次尝试：使用直连（不使用代理）
-        2. 第一次失败后：启用代理重试
-        3. 代理失败：尝试其他代理
-        """
-        last_exception = None
-        use_proxy = False  # 默认不使用代理，优先直连
-        used_proxy_config = None
-        
-        for attempt in range(max_retries):
+    for attempt in range(max_retries):
+        try:
+            
+            # 每次尝试都使用新的session和代理
+            session = create_yfinance_session()
+            ticker = yf.Ticker(ticker_symbol, session=session)
+            
+            # 获取所有需要的数据
+            print(f"🔄 Fetching data for {ticker_symbol} (attempt {attempt + 1}/{max_retries})")
+            
+            # Get info and history
+            info = ticker.info or {}
+            
+            # Get historical data (last 1 year)
+            end_date = datetime.now()
+            start_date = end_date - timedelta(days=365)
+            history = ticker.history(start=start_date, end=end_date)
+            
+            # Get financial statements
+            financials = ticker.financials
+            balance_sheet = ticker.balance_sheet
+            cashflow = ticker.cashflow
+            quarterly_financials = ticker.quarterly_financials
+            quarterly_balance_sheet = ticker.quarterly_balance_sheet
+            quarterly_cashflow = ticker.quarterly_cashflow
+            
+            # Get income statements (same as financials for compatibility)
+            income_stmt = financials  # alias
+            quarterly_income_stmt = quarterly_financials  # alias
+            
+            # Get news
             try:
-                # 应用速率限制
-                wait_if_needed()
-                
-                # 第一次失败后，启用代理
-                if attempt > 0 and not use_proxy:
-                    use_proxy = True
-                    print(f"💡 First attempt failed, enabling proxy for retry {attempt + 1}")
-                
-                # 创建会话
-                session = self._create_session(use_proxy=use_proxy)
-                
-                # 记录当前使用的代理配置（用于失败时标记）
-                if use_proxy:
-                    used_proxy_config = get_proxy_configuration()
-                else:
-                    used_proxy_config = None
-                
-                # 创建 ticker 对象
-                yf_ticker = yf.Ticker(ticker, session=session)
-                
-                # 一次性获取所有需要的数据
-                connection_type = "proxy" if use_proxy else "direct"
-                print(f"📡 Fetching comprehensive data for {ticker} via {connection_type} connection...")
-                
-                # 获取基本信息
-                info = yf_ticker.info
-                
-                # 获取财务报表数据
-                financials = yf_ticker.financials
-                balance_sheet = yf_ticker.balance_sheet
-                cashflow = yf_ticker.cashflow
-                quarterly_financials = yf_ticker.quarterly_financials
-                quarterly_balance_sheet = yf_ticker.quarterly_balance_sheet
-                quarterly_cashflow = yf_ticker.quarterly_cashflow
-                
-                # 获取损益表数据（新版本 yfinance 的属性）
-                try:
-                    income_stmt = yf_ticker.income_stmt
-                    quarterly_income_stmt = yf_ticker.quarterly_income_stmt
-                except AttributeError:
-                    # 如果新属性不存在，使用旧的属性名
-                    income_stmt = financials
-                    quarterly_income_stmt = quarterly_financials
-                
-                # 创建数据集对象
-                dataset = YFinanceDataSet(
-                    ticker=ticker,
-                    info=info,
-                    financials=financials,
-                    balance_sheet=balance_sheet,
-                    cashflow=cashflow,
-                    quarterly_financials=quarterly_financials,
-                    quarterly_balance_sheet=quarterly_balance_sheet,
-                    quarterly_cashflow=quarterly_cashflow,
-                    income_stmt=income_stmt,
-                    quarterly_income_stmt=quarterly_income_stmt,
-                    fetch_timestamp=time.time()
-                )
-                
-                # 添加随机延迟以避免被检测为机器人
-                time.sleep(random.uniform(0.1, 0.5))
-                
-                success_method = "proxy" if use_proxy else "direct connection"
-                print(f"✅ Successfully fetched data for {ticker} via {success_method}")
-                return dataset
-                
-            except Exception as e:
-                last_exception = e
-                error_msg = str(e).lower()
-                
-                # 检查是否是代理相关的错误
-                proxy_errors = ['proxy', 'connection', 'timeout', 'unreachable', 'refused']
-                is_proxy_error = any(error_type in error_msg for error_type in proxy_errors)
-                
-                # 如果使用了代理且出现代理相关错误，标记代理为失败
-                if use_proxy and is_proxy_error and used_proxy_config:
-                    for protocol, proxy_url in used_proxy_config.items():
-                        mark_proxy_failed(proxy_url)
-                    print(f"🔄 Proxy error detected, will try another proxy for next attempt")
-                elif not use_proxy:
-                    print(f"🔄 Direct connection failed, will try with proxy for next attempt")
-                
-                attempt_method = "proxy" if use_proxy else "direct connection"
-                print(f"❌ Attempt {attempt + 1}/{max_retries} via {attempt_method} failed for {ticker}: {str(e)}")
-                
-                # 如果不是最后一次尝试，则等待后重试
+                news = ticker.news or []
+            except:
+                news = []
+            
+            # Create dataset
+            dataset = YFinanceDataset(
+                ticker=ticker_symbol,
+                info=info,
+                history=history,
+                financials=financials,
+                balance_sheet=balance_sheet,
+                cashflow=cashflow,
+                quarterly_financials=quarterly_financials,
+                quarterly_balance_sheet=quarterly_balance_sheet,
+                quarterly_cashflow=quarterly_cashflow,
+                income_stmt=income_stmt,
+                quarterly_income_stmt=quarterly_income_stmt,
+                news=news,
+                fetch_timestamp=time.time()
+            )
+            
+            # 成功后增加随机延迟
+            delay = random.uniform(1.0, 3.0)  # 增加延迟时间
+            print(f"✅ Successfully fetched {ticker_symbol}, waiting {delay:.1f}s...")
+            time.sleep(delay)
+            
+            return dataset
+            
+        except Exception as e:
+            error_msg = str(e).lower()
+            print(f"❌ Attempt {attempt + 1} failed for {ticker_symbol}: {str(e)}")
+            
+            # 检查是否是速率限制错误
+            if "too many requests" in error_msg or "rate limit" in error_msg:
                 if attempt < max_retries - 1:
-                    wait_time = (2 ** attempt) + random.uniform(0, 1)
-                    print(f"⏳ Retrying in {wait_time:.1f} seconds...")
+                    # 速率限制错误，等待更长时间
+                    wait_time = (30 * (attempt + 1)) + random.uniform(10, 30)
+                    print(f"⏳ Rate limited, waiting {wait_time:.1f} seconds before retry...")
                     time.sleep(wait_time)
-        
-        # 所有重试都失败了，抛出最后一个异常
-        print(f"💀 All {max_retries} attempts failed for {ticker}")
-        raise last_exception
-    
-    def get_data(self, ticker: str, force_refresh: bool = False, max_age_seconds: int = 3600) -> YFinanceDataSet:
-        """获取 ticker 的完整数据集
-        
-        Args:
-            ticker: 股票代码
-            force_refresh: 是否强制刷新数据
-            max_age_seconds: 缓存数据的最大年龄（秒）
+                    continue
             
-        Returns:
-            YFinanceDataSet: 完整的财务数据集
-        """
-        # 检查缓存
-        if not force_refresh and ticker in self._data_cache:
-            cached_data = self._data_cache[ticker]
-            if cached_data.is_fresh(max_age_seconds):
-                print(f"📋 Using cached data for {ticker}")
-                return cached_data
-        
-        # 获取新数据
-        dataset = self._safe_request(ticker)
-        
-        # 缓存数据
-        self._data_cache[ticker] = dataset
-        
-        return dataset
+            if attempt < max_retries - 1:
+                # 其他错误，指数退避
+                wait_time = (2 ** attempt) + random.uniform(5, 15)
+                print(f"⏳ Retrying in {wait_time:.1f} seconds...")
+                time.sleep(wait_time)
+            else:
+                print(f"💀 All attempts failed for {ticker_symbol}")
+                return None
     
-    def get_batch_data(self, tickers: list[str], force_refresh: bool = False, max_age_seconds: int = 3600) -> Dict[str, YFinanceDataSet]:
-        """批量获取多个 ticker 的数据
-        
-        Args:
-            tickers: 股票代码列表
-            force_refresh: 是否强制刷新数据
-            max_age_seconds: 缓存数据的最大年龄（秒）
-            
-        Returns:
-            Dict[str, YFinanceDataSet]: ticker 到数据集的映射
-        """
-        results = {}
-        
-        for ticker in tickers:
-            try:
-                results[ticker] = self.get_data(ticker, force_refresh, max_age_seconds)
-            except Exception as e:
-                print(f"❌ Failed to fetch data for {ticker}: {str(e)}")
-                # 继续处理其他 ticker
-                continue
-        
-        return results
-    
-    def clear_cache(self, ticker: Optional[str] = None):
-        """清除缓存
-        
-        Args:
-            ticker: 要清除的特定 ticker，如果为 None 则清除所有缓存
-        """
-        if ticker:
-            self._data_cache.pop(ticker, None)
-            print(f"🗑️ Cleared cache for {ticker}")
-        else:
-            self._data_cache.clear()
-            print("🗑️ Cleared all cache")
-    
-    def get_cache_status(self) -> Dict[str, Any]:
-        """获取缓存状态"""
-        return {
-            "cached_tickers": list(self._data_cache.keys()),
-            "cache_size": len(self._data_cache),
-            "cache_details": {
-                ticker: {
-                    "fetch_timestamp": dataset.fetch_timestamp,
-                    "age_seconds": time.time() - dataset.fetch_timestamp,
-                    "is_fresh": dataset.is_fresh()
-                }
-                for ticker, dataset in self._data_cache.items()
-            }
-        }
+    return None
 
-
-# 全局数据获取器实例
-_data_fetcher = YFinanceDataFetcher()
-
-
-def get_yfinance_data(ticker: str, force_refresh: bool = False, max_age_seconds: int = 3600) -> YFinanceDataSet:
-    """获取 YFinance 数据的便捷函数
+def get_yfinance_data(ticker: str, force_refresh: bool = False) -> Optional[YFinanceDataset]:
+    """获取 YFinance 数据，带缓存
     
     Args:
         ticker: 股票代码
-        force_refresh: 是否强制刷新数据
-        max_age_seconds: 缓存数据的最大年龄（秒）
+        force_refresh: 是否强制刷新（忽略缓存）
         
     Returns:
-        YFinanceDataSet: 完整的财务数据集
+        YFinance 数据集，如果失败返回 None
     """
-    return _data_fetcher.get_data(ticker, force_refresh, max_age_seconds)
+    with _cache_lock:
+        # 检查缓存
+        if not force_refresh and ticker in _data_cache:
+            cached_data = _data_cache[ticker]
+            # 检查缓存是否过期（5分钟）
+            if time.time() - cached_data.fetch_timestamp < 300:
+                print(f"Using cached data for {ticker}")
+                return cached_data
+        
+        # 获取新数据
+        print(f"Fetching fresh data for {ticker}")
+        dataset = safe_fetch_yfinance_data(ticker)
+        
+        if dataset:
+            # 缓存数据
+            _data_cache[ticker] = dataset
+            
+        return dataset
 
-
-def get_batch_yfinance_data(tickers: list[str], force_refresh: bool = False, max_age_seconds: int = 3600) -> Dict[str, YFinanceDataSet]:
-    """批量获取 YFinance 数据的便捷函数
+def get_batch_yfinance_data(tickers: List[str], force_refresh: bool = False) -> Dict[str, YFinanceDataset]:
+    """批量获取 YFinance 数据
     
     Args:
         tickers: 股票代码列表
-        force_refresh: 是否强制刷新数据
-        max_age_seconds: 缓存数据的最大年龄（秒）
+        force_refresh: 是否强制刷新
         
     Returns:
-        Dict[str, YFinanceDataSet]: ticker 到数据集的映射
+        ticker 到数据集的映射
     """
-    return _data_fetcher.get_batch_data(tickers, force_refresh, max_age_seconds)
-
-
-def clear_yfinance_cache(ticker: Optional[str] = None):
-    """清除 YFinance 数据缓存
+    results = {}
     
-    Args:
-        ticker: 要清除的特定 ticker，如果为 None 则清除所有缓存
-    """
-    _data_fetcher.clear_cache(ticker)
+    for ticker in tickers:
+        try:
+            dataset = get_yfinance_data(ticker, force_refresh)
+            if dataset:
+                results[ticker] = dataset
+        except Exception as e:
+            print(f"Error fetching data for {ticker}: {str(e)}")
+    
+    return results
 
+def clear_cache():
+    """清除缓存"""
+    with _cache_lock:
+        _data_cache.clear()
+        print("YFinance data cache cleared")
 
-def get_yfinance_cache_status() -> Dict[str, Any]:
-    """获取 YFinance 缓存状态"""
-    return _data_fetcher.get_cache_status()
-
+def get_cache_status():
+    """获取缓存状态"""
+    with _cache_lock:
+        return {
+            "cached_tickers": list(_data_cache.keys()),
+            "cache_size": len(_data_cache),
+            "oldest_data_age": min([time.time() - data.fetch_timestamp for data in _data_cache.values()]) if _data_cache else 0
+        }
 
 if __name__ == "__main__":
     # 演示用法
@@ -353,5 +354,5 @@ if __name__ == "__main__":
         print(f"❌ Error: {e}")
     
     # 显示缓存状态
-    cache_status = get_yfinance_cache_status()
+    cache_status = get_cache_status()
     print(f"\nCache status: {cache_status}") 
